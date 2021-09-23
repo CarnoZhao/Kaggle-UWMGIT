@@ -3,6 +3,7 @@ import os.path as osp
 import warnings
 from collections import OrderedDict
 from functools import reduce
+from PIL import Image
 
 import mmcv
 import numpy as np
@@ -226,9 +227,28 @@ class CustomDataset(Dataset):
         self.pre_pipeline(results)
         return self.pipeline(results)
 
-    def format_results(self, results, imgfile_prefix, indices=None, **kwargs):
-        """Place holder to format result to dataset specific output."""
-        raise NotImplementedError
+    def format_results(self, results, imgfile_prefix=None, indices = None, **kwargs):
+        """Format the results into dir (standard format for Cityscapes
+        evaluation).
+        Args:
+            results (list): Testing results of the dataset.
+            imgfile_prefix (str | None): The prefix of images files. It
+                includes the file path and the prefix of filename, e.g.,
+                "a/b/prefix". If not specified, a temp file will be created.
+                Default: None.
+            to_label_id (bool): whether convert output to label_id for
+                submission. Default: False
+        Returns:
+            tuple: (result_files, tmp_dir), result_files is a list containing
+                the image paths, tmp_dir is the temporal directory created
+                for saving json/png files when img_prefix is not specified.
+        """
+        result_files = []
+        for res, idx in zip(results, indices):
+            result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
+            Image.fromarray(res.astype(np.uint8)).save(result_file)
+
+        return result_files, imgfile_prefix
 
     def get_gt_seg_maps(self, efficient_test=None):
         """Get ground truth segmentation maps for evaluation."""

@@ -1,3 +1,8 @@
+results
+*.zip
+work_imgs
+nohup.out
+*.ipynb
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
