@@ -9,7 +9,7 @@ model = dict(
         in_channels=3,
         embed_dims=64,
         num_stages=4,
-        num_layers=[3, 8, 27, 3],
+        num_layers=[3, 4, 6, 3],
         num_heads=[1, 2, 5, 8],
         patch_sizes=[7, 3, 3, 3],
         sr_ratios=[8, 4, 2, 1],
@@ -43,7 +43,7 @@ classes = ["background", "field", "grass", "building", "road", "construction", "
 palette = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156], [190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0], [107, 142, 35]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-crop_size = (512, 512)
+crop_size = (640, 640)
 albu_train_transforms = [
     dict(type='RandomRotate90', p=0.5),
     # dict(type='GridDistortion', p=0.5),
@@ -51,11 +51,11 @@ albu_train_transforms = [
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations'),
-    # dict(type='Resize', img_scale=(512, 512), ratio_range=(1, 1)),
+    dict(type='Resize', img_scale=(640, 640), ratio_range=(1.0, 1.0)),
     # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
-    # dict(type='RandomRotate90', prob=0.5),
+    # dict(type='RandomRotate', prob=0.5, degree=30),
     # dict(type='Albu', transforms=albu_train_transforms),
     dict(type='PhotoMetricDistortion'),
     dict(type='Normalize', **img_norm_cfg),
@@ -67,7 +67,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(512, 512),
+        img_scale=(640, 640),
         # img_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 1.75],
         flip=True,
         transforms=[
@@ -79,7 +79,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=16,
     workers_per_gpu=4,
     train=[
         dict(
@@ -132,13 +132,12 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-# load_from = "./weights/segformer_mit-b4_512x512_160k_ade20k_20210728_183055-7f509d7d.pth"
-load_from = "./work_dirs/remote/sfmb4_6x_16bs_ohem_all/epoch_72.pth"
+load_from = "./weights/segformer_mit-b2_512x512_160k_ade20k_20210726_112103-cbd414ac.pth"
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 12
+total_epochs = 24
 # optimizer
 optimizer = dict(
     type='AdamW',
@@ -167,4 +166,4 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/sfmb4_fine1x_16bs_ohem_all'
+work_dir = './work_dirs/remote/sfmb2_640_ohem_all'

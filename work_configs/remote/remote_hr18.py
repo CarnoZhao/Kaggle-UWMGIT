@@ -1,36 +1,54 @@
 num_classes = 9
 
+# model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/mit_b4.pth",
+    pretrained='open-mmlab://msra/hrnetv2_w18',
     backbone=dict(
-        type='MixVisionTransformer',
-        in_channels=3,
-        embed_dims=64,
-        num_stages=4,
-        num_layers=[3, 8, 27, 3],
-        num_heads=[1, 2, 5, 8],
-        patch_sizes=[7, 3, 3, 3],
-        sr_ratios=[8, 4, 2, 1],
-        out_indices=(0, 1, 2, 3),
-        mlp_ratio=4,
-        qkv_bias=True,
-        drop_rate=0.0,
-        attn_drop_rate=0.0,
-        drop_path_rate=0.1),
+        type='HRNet',
+        norm_cfg=norm_cfg,
+        norm_eval=False,
+        extra=dict(
+            stage1=dict(
+                num_modules=1,
+                num_branches=1,
+                block='BOTTLENECK',
+                num_blocks=(4, ),
+                num_channels=(64, )),
+            stage2=dict(
+                num_modules=1,
+                num_branches=2,
+                block='BASIC',
+                num_blocks=(4, 4),
+                num_channels=(18, 36)),
+            stage3=dict(
+                num_modules=4,
+                num_branches=3,
+                block='BASIC',
+                num_blocks=(4, 4, 4),
+                num_channels=(18, 36, 72)),
+            stage4=dict(
+                num_modules=3,
+                num_branches=4,
+                block='BASIC',
+                num_blocks=(4, 4, 4, 4),
+                num_channels=(18, 36, 72, 144)))),
     decode_head=dict(
-        type='SegformerHead',
-        sampler=dict(type='OHEMPixelSampler', thresh=0.7, min_kept=100000),
-        in_channels=[64, 128, 320, 512],
-        in_index=[0, 1, 2, 3],
-        channels=256,
-        dropout_ratio=0.1,
+        type='FCNHead',
+        in_channels=[18, 36, 72, 144],
+        in_index=(0, 1, 2, 3),
+        channels=sum([18, 36, 72, 144]),
+        input_transform='resize_concat',
+        kernel_size=1,
+        num_convs=1,
+        concat_input=False,
+        dropout_ratio=-1,
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
@@ -79,7 +97,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=16,
     workers_per_gpu=4,
     train=[
         dict(
@@ -133,38 +151,21 @@ log_config = dict(
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
 # load_from = "./weights/segformer_mit-b4_512x512_160k_ade20k_20210728_183055-7f509d7d.pth"
-load_from = "./work_dirs/remote/sfmb4_6x_16bs_ohem_all/epoch_72.pth"
+load_from = None
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 12
+total_epochs = 12 * 6
 # optimizer
-optimizer = dict(
-    type='AdamW',
-    lr=0.00006,
-    betas=(0.9, 0.999),
-    weight_decay=0.01,
-    paramwise_cfg=dict(
-        custom_keys={
-            'pos_block': dict(decay_mult=0.),
-            'norm': dict(decay_mult=0.),
-            'head': dict(lr_mult=10.)
-        }))
+optimizer = dict(type='SGD', lr=0.01, momentum=0.9, weight_decay=0.0005)
 optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
 # learning policy
-lr_config = dict(
-    policy='poly',
-    warmup='linear',
-    warmup_iters=1000,
-    warmup_ratio=1e-6,
-    power=1.0,
-    min_lr=0.0,
-    by_epoch=False)
+lr_config = dict(policy='poly', power=0.9, min_lr=1e-4, by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=total_epochs)
+checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/sfmb4_fine1x_16bs_ohem_all'
+work_dir = './work_dirs/remote/hr18_6x_32bs_all'
