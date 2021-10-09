@@ -5,13 +5,13 @@ norm_cfg = dict(type='SyncBN', requires_grad=True)
 backbone_norm_cfg = dict(type='LN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained='weights/swin_base_patch4_window7_224_22k.pth',
+    pretrained='weights/swin_base_patch4_window12_384_22k.pth',
     backbone=dict(
         type='SwinTransformer',
-        pretrain_img_size=224,
+        pretrain_img_size=384,
         embed_dims=128,
         patch_size=4,
-        window_size=7,
+        window_size=12,
         mlp_ratio=4,
         depths=[2, 2, 18, 2],
         num_heads=[4, 8, 16, 32],
@@ -62,7 +62,8 @@ classes = ["background", "field", "grass", "building", "road", "construction", "
 palette = [[128, 64, 128], [244, 35, 232], [70, 70, 70], [102, 102, 156], [190, 153, 153], [153, 153, 153], [250, 170, 30], [220, 220, 0], [107, 142, 35]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-crop_size = (512, 512)
+size = 512
+crop_size = (size, size)
 albu_train_transforms = [
     dict(type='RandomRotate90', p=0.5),
     dict(type='GridDistortion', p=0.5),
@@ -86,7 +87,7 @@ test_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(
         type='MultiScaleFlipAug',
-        img_scale=(512, 512),
+        img_scale=(size, size),
         # img_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 1.75],
         flip=True,
         transforms=[
@@ -157,7 +158,7 @@ resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 12
+total_epochs = 18
 # optimizer
 optimizer = dict(
     type='AdamW',
@@ -186,4 +187,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/swb_22k_1x_16bs_all'
+work_dir = './work_dirs/remote/swb384_22k_18e_16bs_all'
