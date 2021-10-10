@@ -36,8 +36,11 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        # loss_decode=dict(
+        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', loss_weight=0.5),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.5)]),
     auxiliary_head=dict(
         type='FCNHead',
         in_channels=512,
@@ -49,8 +52,11 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
+        # loss_decode=dict(
+        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
+        loss_decode=[
+            dict(type='CrossEntropyLoss', loss_name='loss_ce', loss_weight=0.2),
+            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.2)]),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
@@ -90,6 +96,7 @@ test_pipeline = [
         img_scale=(size, size),
         # img_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 1.75],
         flip=True,
+        flip_direction=['horizontal', 'vertical'],
         transforms=[
             dict(type='Resize', keep_ratio=True),
             dict(type='RandomFlip'),
@@ -158,7 +165,7 @@ resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 18
+total_epochs = 12
 # optimizer
 optimizer = dict(
     type='AdamW',
@@ -187,4 +194,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/swb384_22k_18e_16bs_all'
+work_dir = './work_dirs/remote/swb384_22k_1x_16bs_dicece11_all'
