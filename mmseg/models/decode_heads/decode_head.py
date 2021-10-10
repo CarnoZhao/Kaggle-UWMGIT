@@ -6,6 +6,7 @@ import torch.nn as nn
 from mmcv.runner import BaseModule, auto_fp16, force_fp32
 
 from mmseg.core import build_pixel_sampler
+from .crf_module import CRF
 from mmseg.ops import resize
 from ..builder import build_loss
 from ..losses import accuracy
@@ -62,6 +63,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
                  ignore_index=255,
                  sampler=None,
                  align_corners=False,
+                 crf=None,
                  init_cfg=dict(
                      type='Normal', std=0.01, override=dict(name='conv_seg'))):
         super(BaseDecodeHead, self).__init__(init_cfg)
@@ -192,7 +194,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
         Returns:
             dict[str, Tensor]: a dictionary of loss components
         """
-        seg_logits = self.forward(inputs)
+        seg_logits = self.crf(self.forward(inputs))
         losses = self.losses(seg_logits, gt_semantic_seg)
         return losses
 
@@ -211,7 +213,7 @@ class BaseDecodeHead(BaseModule, metaclass=ABCMeta):
         Returns:
             Tensor: Output segmentation map.
         """
-        return self.forward(inputs)
+        return self.crf(self.forward(inputs))
 
     def cls_seg(self, feat):
         """Classify each pixel."""

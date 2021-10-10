@@ -165,7 +165,7 @@ resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 12
+total_epochs = 18
 # optimizer
 optimizer = dict(
     type='AdamW',
