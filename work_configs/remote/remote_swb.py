@@ -36,11 +36,8 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        # loss_decode=dict(
-        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
-        loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', loss_weight=0.5),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.5)]),
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     auxiliary_head=dict(
         type='FCNHead',
         in_channels=512,
@@ -52,11 +49,8 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        # loss_decode=dict(
-        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
-        loss_decode=[
-            dict(type='CrossEntropyLoss', loss_name='loss_ce', loss_weight=0.2),
-            dict(type='DiceLoss', loss_name='loss_dice', loss_weight=0.2)]),
+        loss_decode=dict(
+            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict(mode='whole'))
@@ -165,7 +159,7 @@ resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 18
+total_epochs = 12
 # optimizer
 optimizer = dict(
     type='AdamW',
@@ -190,8 +184,8 @@ lr_config = dict(
     by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=12)
-evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
+checkpoint_config = dict(by_epoch=True, interval=min(12, total_epochs))
+evaluation = dict(by_epoch=True, interval=min(12, total_epochs), metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/swb384_22k_1x_16bs_dicece11_all'
+work_dir = './work_dirs/remote/swb384_22k_1x_16bs_all'

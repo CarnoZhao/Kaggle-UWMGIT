@@ -23,7 +23,6 @@ model = dict(
         contract_dilation=True),
     decode_head=dict(
         type='DepthwiseSeparableASPPHead',
-        sampler=dict(type='OHEMPixelSampler', thresh=0.7, min_kept=100000),
         in_channels=2048,
         in_index=3,
         channels=512,
@@ -169,4 +168,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote/dl3pr101_1x_16bs_ohem_all'
+work_dir = './work_dirs/remote/dl3pr101_1x_16bs_all'
