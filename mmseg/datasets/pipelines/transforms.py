@@ -985,22 +985,22 @@ class PhotoMetricDistortion(object):
     def saturation(self, img):
         """Saturation distortion."""
         if random.randint(2):
-            img = mmcv.bgr2hsv(img)
-            img[:, :, 1] = self.convert(
-                img[:, :, 1],
+            img2 = mmcv.bgr2hsv(img[...,:3])
+            img2[:, :, 1] = self.convert(
+                img2[:, :, 1],
                 alpha=random.uniform(self.saturation_lower,
                                      self.saturation_upper))
-            img = mmcv.hsv2bgr(img)
+            img[...,:3] = mmcv.hsv2bgr(img2)
         return img
 
     def hue(self, img):
         """Hue distortion."""
         if random.randint(2):
-            img = mmcv.bgr2hsv(img)
-            img[:, :,
-                0] = (img[:, :, 0].astype(int) +
+            img2 = mmcv.bgr2hsv(img[...,:3])
+            img2[:, :,
+                0] = (img2[:, :, 0].astype(int) +
                       random.randint(-self.hue_delta, self.hue_delta)) % 180
-            img = mmcv.hsv2bgr(img)
+            img[...,:3] = mmcv.hsv2bgr(img2)
         return img
 
     def __call__(self, results):
