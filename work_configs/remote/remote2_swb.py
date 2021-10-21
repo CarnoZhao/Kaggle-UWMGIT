@@ -63,7 +63,7 @@ classes = ["background", "dry", "fruit", "tea", "mulberry", "latex", "nursery", 
 palette = [[120, 120, 120], [180, 120, 120], [6, 230, 230], [80, 50, 50], [4, 200, 3], [120, 120, 80], [140, 140, 140], [204, 5, 255], [230, 230, 230], [4, 250, 7], [224, 5, 255], [235, 255, 7], [150, 5, 61], [120, 120, 70], [8, 255, 51], [255, 6, 82], [143, 255, 140], [204, 255, 4], [255, 51, 7], [204, 70, 3], [0, 102, 200], [61, 230, 250], [255, 6, 51], [11, 102, 255], [255, 7, 71], [255, 9, 224], [9, 7, 230], [220, 220, 220], [255, 9, 92], [112, 9, 255], [8, 255, 214], [7, 255, 224], [255, 184, 6], [10, 255, 71], [255, 41, 10], [7, 255, 255], [224, 255, 8], [102, 8, 255], [255, 61, 6], [255, 194, 7], [255, 122, 8], [0, 255, 20], [255, 8, 41], [255, 5, 153], [6, 51, 255], [235, 12, 255], [160, 150, 20]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53, 114.50], std=[58.395, 57.12, 57.375, 57.63], to_rgb=True)
-size = 512
+size = 384
 crop_size = (size, size)
 albu_train_transforms = [
     dict(type='RandomRotate90', p=0.5),
@@ -72,7 +72,7 @@ albu_train_transforms = [
 train_pipeline = [
     dict(type='LoadImageAlphaFromFile'),
     dict(type='LoadAnnotations'),
-    # dict(type='Resize', img_scale=(512, 512), ratio_range=(1, 1)),
+    dict(type='Resize', img_scale=(size, size)),
     # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
@@ -101,7 +101,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=5,
+    samples_per_gpu=8,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -162,7 +162,7 @@ optimizer = dict(
             'relative_position_bias_table': dict(decay_mult=0.),
             'norm': dict(decay_mult=0.)
         }))
-optimizer_config = dict(grad_clip=None, cumulative_iters=2)
+optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
 # learning policy
 lr_config = dict(
     policy='poly',
@@ -178,4 +178,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/swb384_22k_1x_10bs2acc_all'
+work_dir = './work_dirs/remote2/swb384_22k_1x_16bs_384sz_all'
