@@ -88,28 +88,8 @@ def train_segmentor(model,
             logger=logger,
             meta=meta))
 
-    
-    fp16_cfg = cfg.get('fp16', None)
-    if 'cumulative_iters' in cfg.optimizer_config:
-        if fp16_cfg is not None:
-            optimizer_config = GradientCumulativeFp16OptimizerHook(
-                **cfg.optimizer_config, **fp16_cfg, distributed=distributed)
-        elif distributed and 'type' not in cfg.optimizer_config:
-            optimizer_config = GradientCumulativeOptimizerHook(
-                **cfg.optimizer_config)
-        else:
-            optimizer_config = cfg.optimizer_config
-    else:
-        if fp16_cfg is not None:
-            optimizer_config = Fp16OptimizerHook(
-                **cfg.optimizer_config, **fp16_cfg, distributed=distributed)
-        elif distributed and 'type' not in cfg.optimizer_config:
-            optimizer_config = OptimizerHook(**cfg.optimizer_config)
-        else:
-            optimizer_config = cfg.optimizer_config
-
     # register hooks
-    runner.register_training_hooks(cfg.lr_config, optimizer_config,
+    runner.register_training_hooks(cfg.lr_config, cfg.optimizer_config,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
 
