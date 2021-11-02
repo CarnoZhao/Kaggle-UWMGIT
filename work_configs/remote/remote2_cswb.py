@@ -156,7 +156,7 @@ optimizer = dict(
             'relative_position_bias_table': dict(decay_mult=0.),
             'norm': dict(decay_mult=0.)
         }))
-optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
+optimizer_config = dict(grad_clip=None, cumulative_iters=2)
 # learning policy
 lr_config = dict(
     policy='poly',
@@ -172,4 +172,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/cswb384_1x_10bs_all'
+work_dir = './work_dirs/remote2/cswb384_1x_10bs2acc_all'
