@@ -64,7 +64,7 @@ palette = [[120, 120, 120], [180, 120, 120], [6, 230, 230], [80, 50, 50], [4, 20
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53, 114.50], std=[58.395, 57.12, 57.375, 57.63], to_rgb=True)
 size = 512
-crop_size = (size, size)
+crop_size = (384, 384)
 albu_train_transforms = [
     dict(type='RandomRotate90', p=0.5),
     dict(type='GridDistortion', p=0.5),
@@ -73,7 +73,7 @@ train_pipeline = [
     dict(type='LoadImageAlphaFromFile'),
     dict(type='LoadAnnotations'),
     # dict(type='Resize', img_scale=(size, size)),
-    # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
+    dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=1),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
     # dict(type='RandomRotate90', prob=0.5),
@@ -101,7 +101,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=5,
+    samples_per_gpu=8,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -173,8 +173,8 @@ lr_config = dict(
     by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=12)
-evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
+checkpoint_config = dict(by_epoch=True, interval=total_epochs)
+evaluation = dict(by_epoch=True, interval=total_epochs, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/swb384_22k_1x_10bs_all'
+work_dir = './work_dirs/remote2/swb384_22k_1x_16bs_384sz_all'

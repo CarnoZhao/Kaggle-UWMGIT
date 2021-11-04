@@ -117,7 +117,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=5,
+    samples_per_gpu=8,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -173,8 +173,8 @@ optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
 lr_config = dict(policy='poly', power=0.9, min_lr=1e-4, by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=12)
-evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
+checkpoint_config = dict(by_epoch=True, interval=total_epochs)
+evaluation = dict(by_epoch=True, interval=total_epochs, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/ocr48_1x_10bs_ohem_all'
+work_dir = './work_dirs/remote2/ocr48_1x_16bs_ohem_all2'
