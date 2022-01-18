@@ -363,7 +363,8 @@ def total_area_to_metrics(total_area_intersect,
         raise KeyError('metrics {} is not supported'.format(metrics))
 
     all_acc = total_area_intersect.sum() / total_area_label.sum()
-    ret_metrics = OrderedDict({'aAcc': all_acc})
+    fw_iou = (total_area_intersect / total_area_union * total_area_label).sum() / total_area_label.sum()
+    ret_metrics = OrderedDict({'aAcc': all_acc, 'fwIoU': fw_iou})
     for metric in metrics:
         if metric == 'mIoU':
             iou = total_area_intersect / total_area_union

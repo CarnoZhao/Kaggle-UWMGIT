@@ -418,6 +418,7 @@ class CustomDataset(Dataset):
 
         # each class table
         ret_metrics.pop('aAcc', None)
+        ret_metrics.pop('fwIoU', None)
         ret_metrics_class = OrderedDict({
             ret_metric: np.round(ret_metric_value * 100, 2)
             for ret_metric, ret_metric_value in ret_metrics.items()
@@ -434,6 +435,8 @@ class CustomDataset(Dataset):
         for key, val in ret_metrics_summary.items():
             if key == 'aAcc':
                 summary_table_data.add_column(key, [val])
+            elif key == 'fwIoU':
+                summary_table_data.add_column(key, [val])
             else:
                 summary_table_data.add_column('m' + key, [val])
 
@@ -445,6 +448,8 @@ class CustomDataset(Dataset):
         # each metric dict
         for key, value in ret_metrics_summary.items():
             if key == 'aAcc':
+                eval_results[key] = value / 100.0
+            if key == 'fwIoU':
                 eval_results[key] = value / 100.0
             else:
                 eval_results['m' + key] = value / 100.0
