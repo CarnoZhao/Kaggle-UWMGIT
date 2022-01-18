@@ -33,6 +33,7 @@ class LoadImageFromFile(object):
     def __init__(self,
                  to_float32=False,
                  color_type='color',
+                 max_value_to_uint8=-1,
                  file_client_args=dict(backend='disk'),
                  imdecode_backend='cv2'):
         self.to_float32 = to_float32
@@ -40,6 +41,7 @@ class LoadImageFromFile(object):
         self.file_client_args = file_client_args.copy()
         self.file_client = None
         self.imdecode_backend = imdecode_backend
+        self.max_value_to_uint8 = max_value_to_uint8
 
     def __call__(self, results):
         """Call functions to load image and get image meta information.
@@ -62,6 +64,9 @@ class LoadImageFromFile(object):
         img_bytes = self.file_client.get(filename)
         img = mmcv.imfrombytes(
             img_bytes, flag=self.color_type, backend=self.imdecode_backend)
+        if img.dtype != np.uint8 and self.max_value_to_uint8 != -1:
+            img = img.astype(np.float32) / self.max_value_to_uint8 * 255
+            img = img.astype(np.uint8)
         if self.to_float32:
             img = img.astype(np.float32)
 
@@ -215,6 +220,7 @@ class LoadAnnotations(object):
         gt_semantic_seg = mmcv.imfrombytes(
             img_bytes, flag='unchanged',
             backend=self.imdecode_backend).squeeze().astype(np.uint8)
+
         # modify if custom classes
         if results.get('label_map', None) is not None:
             for old_id, new_id in results['label_map'].items():
