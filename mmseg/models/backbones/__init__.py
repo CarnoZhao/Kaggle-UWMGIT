@@ -12,9 +12,10 @@ from .swin import SwinTransformer
 from .unet import UNet
 from .vit import VisionTransformer
 from .cswin import CSWin
+from .convnext import ConvNeXt
 
 __all__ = [
     'ResNet', 'ResNetV1c', 'ResNetV1d', 'ResNeXt', 'HRNet', 'FastSCNN',
     'ResNeSt', 'MobileNetV2', 'UNet', 'CGNet', 'MobileNetV3',
-    'VisionTransformer', 'SwinTransformer', 'MixVisionTransformer', 'CSWin'
+    'VisionTransformer', 'SwinTransformer', 'MixVisionTransformer', 'CSWin', 'ConvNeXt'
 ]
