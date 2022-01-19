@@ -86,8 +86,18 @@ class CustomDataset(Dataset):
                  ignore_index=255,
                  reduce_zero_label=False,
                  classes=None,
+                 use_mosaic=False,
+                 mosaic_center=(0.25, 0.75),
+                 mosaic_prob=0.5,
                  palette=None):
-        self.pipeline = Compose(pipeline)
+        self.use_mosaic = use_mosaic
+        if self.use_mosaic:
+            self.mosaic_prob = mosaic_prob
+            self.mosaic_center = mosaic_center
+            self.load_pipeline = Compose(pipeline[:2])
+            self.pipeline = Compose(pipeline[2:])
+        else:
+            self.pipeline = Compose(pipeline)
         self.img_dir = img_dir
         self.img_suffix = img_suffix
         self.ann_dir = ann_dir
@@ -204,12 +214,53 @@ class CustomDataset(Dataset):
             dict: Training data and annotation after pipeline with new keys
                 introduced by pipeline.
         """
-
-        img_info = self.img_infos[idx]
-        ann_info = self.get_ann_info(idx)
-        results = dict(img_info=img_info, ann_info=ann_info)
-        self.pre_pipeline(results)
-        return self.pipeline(results)
+        if self.use_mosaic and np.random.rand() < self.mosaic_prob:
+            idxes = [idx] + np.random.randint(0, len(self), 3).tolist()
+            results_list = []
+            for idx in idxes:
+                img_info = self.img_infos[idx]
+                ann_info = self.get_ann_info(idx)
+                results = dict(img_info=img_info, ann_info=ann_info)
+                self.pre_pipeline(results)
+                results_list.append(self.load_pipeline(results))
+            results = results_list[0]
+            img = results['img'].copy(); img[:] = 0
+            masks = {k: results[k].copy() * 0 + 255 for k in results['seg_fields']}
+            center_x = int(round(np.random.uniform(*self.mosaic_center) * img.shape[1]))
+            center_y = int(round(np.random.uniform(*self.mosaic_center) * img.shape[0]))
+            for i in range(4):
+                if i == 0:
+                    img[:center_y,:center_x] = results_list[i]['img'][-center_y:,-center_x:]
+                    for k in masks:
+                        masks[k][:center_y,:center_x] = results_list[i][k][-center_y:,-center_x:]
+                elif i == 1:
+                    img[:center_y,-center_x:] = results_list[i]['img'][-center_y:,:center_x]
+                    for k in masks:
+                        masks[k][:center_y,-center_x:] = results_list[i][k][-center_y:,:center_x]
+                elif i == 2:
+                    img[-center_y:,:center_x] = results_list[i]['img'][:center_y,-center_x:]
+                    for k in masks:
+                        masks[k][-center_y:,:center_x] = results_list[i][k][:center_y,-center_x:]
+                elif i == 3:
+                    img[-center_y:,-center_x:] = results_list[i]['img'][:center_y,:center_x]
+                    for k in masks:
+                        masks[k][-center_y:,-center_x:] = results_list[i][k][:center_y,:center_x]
+            results['img'] = img
+            for k in masks:
+                results[k] = masks[k]
+            return self.pipeline(results)
+        elif self.use_mosaic:
+            img_info = self.img_infos[idx]
+            ann_info = self.get_ann_info(idx)
+            results = dict(img_info=img_info, ann_info=ann_info)
+            self.pre_pipeline(results)
+            return self.pipeline(self.load_pipeline(results))
+        else:
+            img_info = self.img_infos[idx]
+            ann_info = self.get_ann_info(idx)
+            results = dict(img_info=img_info, ann_info=ann_info)
+            self.pre_pipeline(results)
+            return self.pipeline(results)
 
     def prepare_test_img(self, idx):
         """Get testing data after pipeline.
