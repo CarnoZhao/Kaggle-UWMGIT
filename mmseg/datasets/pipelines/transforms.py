@@ -455,9 +455,10 @@ class Normalize(object):
             default is true.
     """
 
-    def __init__(self, mean, std, to_rgb=True):
+    def __init__(self, mean, std, multiply = 1, to_rgb=True):
         self.mean = np.array(mean, dtype=np.float32)
         self.std = np.array(std, dtype=np.float32)
+        self.multiply = multiply
         self.to_rgb = to_rgb
 
     def __call__(self, results):
@@ -471,7 +472,7 @@ class Normalize(object):
                 result dict.
         """
 
-        results['img'] = mmcv.imnormalize(results['img'], self.mean, self.std,
+        results['img'] = mmcv.imnormalize(results['img'] * self.multiply, self.mean, self.std,
                                           self.to_rgb)
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)

@@ -65,8 +65,8 @@ class LoadImageFromFile(object):
         img = mmcv.imfrombytes(
             img_bytes, flag=self.color_type, backend=self.imdecode_backend)
         if img.dtype != np.uint8 and self.max_value_to_uint8 != -1:
-            img = img.astype(np.float32) / self.max_value_to_uint8 * 255
-            img = img.astype(np.uint8)
+            img = img.astype(np.float32) / self.max_value_to_uint8 # * 255
+            # img = img.astype(np.uint8)
         if self.to_float32:
             img = img.astype(np.float32)
 
