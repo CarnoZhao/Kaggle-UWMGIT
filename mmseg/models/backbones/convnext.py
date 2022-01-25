@@ -71,9 +71,11 @@ class ConvNeXt(nn.Module):
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
     """
     def __init__(self, in_chans=3, depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], 
-                 drop_path_rate=0., layer_scale_init_value=1e-6, out_indices=[0, 1, 2, 3],
+                 drop_path_rate=0., layer_scale_init_value=1e-6, out_indices=[0, 1, 2, 3], pretrained=None
                  ):
         super().__init__()
+        self.pretrained = pretrained
+        self.in_chans = in_chans
 
         self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
@@ -120,6 +122,8 @@ class ConvNeXt(nn.Module):
             pretrained (str, optional): Path to pre-trained weights.
                 Defaults to None.
         """
+        if pretrained is None:
+            pretrained = self.pretrained
 
         def _init_weights(m):
             if isinstance(m, nn.Linear):
