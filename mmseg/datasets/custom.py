@@ -1,4 +1,5 @@
 # Copyright (c) OpenMMLab. All rights reserved.
+import os
 import os.path as osp
 import warnings
 from collections import OrderedDict
@@ -103,6 +104,8 @@ class CustomDataset(Dataset):
         self.ann_dir = ann_dir
         self.seg_map_suffix = seg_map_suffix
         self.split = split
+        if self.split == "None":
+            self.split = None
         self.data_root = data_root
         self.test_mode = test_mode
         self.ignore_index = ignore_index
@@ -214,6 +217,12 @@ class CustomDataset(Dataset):
             dict: Training data and annotation after pipeline with new keys
                 introduced by pipeline.
         """
+
+        def random_crop(img, w, h):
+            x = int(np.random.randint(0, img.shape[1] - w, 1))
+            y = int(np.random.randint(0, img.shape[0] - h, 1))
+            return x, x + w, y, y + h
+
         if self.use_mosaic and np.random.rand() < self.mosaic_prob:
             idxes = [idx] + np.random.randint(0, len(self), 3).tolist()
             results_list = []
@@ -230,21 +239,25 @@ class CustomDataset(Dataset):
             center_y = int(round(np.random.uniform(*self.mosaic_center) * img.shape[0]))
             for i in range(4):
                 if i == 0:
-                    img[:center_y,:center_x] = results_list[i]['img'][-center_y:,-center_x:]
+                    x1, x2, y1, y2 = random_crop(results_list[i]['img'], center_x, center_y)
+                    img[:center_y,:center_x] = results_list[i]['img'][y1:y2, x1:x2]
                     for k in masks:
-                        masks[k][:center_y,:center_x] = results_list[i][k][-center_y:,-center_x:]
+                        masks[k][:center_y,:center_x] = results_list[i][k][y1:y2, x1:x2]
                 elif i == 1:
-                    img[:center_y,-center_x:] = results_list[i]['img'][-center_y:,:center_x]
+                    x1, x2, y1, y2 = random_crop(results_list[i]['img'], img.shape[1] - center_x, center_y)
+                    img[:center_y,center_x:] = results_list[i]['img'][y1:y2, x1:x2]
                     for k in masks:
-                        masks[k][:center_y,-center_x:] = results_list[i][k][-center_y:,:center_x]
+                        masks[k][:center_y,center_x:] = results_list[i][k][y1:y2, x1:x2]
                 elif i == 2:
-                    img[-center_y:,:center_x] = results_list[i]['img'][:center_y,-center_x:]
+                    x1, x2, y1, y2 = random_crop(results_list[i]['img'], center_x, img.shape[0] - center_y)
+                    img[center_y:,:center_x] = results_list[i]['img'][y1:y2, x1:x2]
                     for k in masks:
-                        masks[k][-center_y:,:center_x] = results_list[i][k][:center_y,-center_x:]
+                        masks[k][center_y:,:center_x] = results_list[i][k][y1:y2, x1:x2]
                 elif i == 3:
-                    img[-center_y:,-center_x:] = results_list[i]['img'][:center_y,:center_x]
+                    x1, x2, y1, y2 = random_crop(results_list[i]['img'], img.shape[1] - center_x, img.shape[0] - center_y)
+                    img[center_y:,center_x:] = results_list[i]['img'][y1:y2, x1:x2]
                     for k in masks:
-                        masks[k][-center_y:,-center_x:] = results_list[i][k][:center_y,:center_x]
+                        masks[k][center_y:,center_x:] = results_list[i][k][y1:y2, x1:x2]
             results['img'] = img
             for k in masks:
                 results[k] = masks[k]
@@ -297,6 +310,8 @@ class CustomDataset(Dataset):
         result_files = []
         for res, idx in zip(results, indices):
             result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
+            if not osp.exists(osp.dirname(result_file)):
+                os.system(f"mkdir -p {osp.dirname(result_file)}")
             Image.fromarray(res.astype(np.uint8)).save(result_file)
 
         return result_files, imgfile_prefix
