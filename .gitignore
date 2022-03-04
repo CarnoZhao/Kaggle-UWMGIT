@@ -1,6 +1,9 @@
 results
 *.zip
 work_imgs
+work_imgs2
+weights
+*.pth
 nohup.out
 *.ipynb
 # Byte-compiled / optimized / DLL files
@@ -120,4 +123,4 @@ work_dirs/
 mmseg/.mim
 
 # Pytorch
-*.pth
+# *.pth
