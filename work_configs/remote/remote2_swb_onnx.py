@@ -1,29 +1,35 @@
 num_classes = 47
 
 # model settings
-norm_cfg = dict(type='SyncBN', requires_grad=True)
-backbone_norm_cfg = dict(type='LN', requires_grad=True)
+norm_cfg = dict(type='SyncBN', requires_grad=False)
+backbone_norm_cfg = dict(type='LN', requires_grad=False)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/cswin_base_384.pth",
+    pretrained='weights/swin_base_patch4_window12_384_22k.pth',
     backbone=dict(
-        type='CSWin',
-        in_chans=4,
-        embed_dim=96,
+        type='SwinTransformer',
+        in_channels=4,
+        pretrain_img_size=384,
+        embed_dims=128,
         patch_size=4,
-        depth=[2,4,32,2],
-        num_heads=[4,8,16,32],
-        split_size=[1,2,7,7],
-        mlp_ratio=4.,
+        window_size=12,
+        mlp_ratio=4,
+        depths=[2, 2, 18, 2],
+        num_heads=[4, 8, 16, 32],
+        strides=(4, 2, 2, 2),
+        out_indices=(0, 1, 2, 3),
         qkv_bias=True,
         qk_scale=None,
+        patch_norm=True,
         drop_rate=0.,
         attn_drop_rate=0.,
-        drop_path_rate=0.6,
-        use_chk=False),
+        drop_path_rate=0.3,
+        use_abs_pos_embed=False,
+        act_cfg=dict(type='GELU'),
+        norm_cfg=backbone_norm_cfg),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[96,192,384,768],
+        in_channels=[128, 256, 512, 1024],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
@@ -35,7 +41,7 @@ model = dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     auxiliary_head=dict(
         type='FCNHead',
-        in_channels=384,
+        in_channels=512,
         in_index=2,
         channels=256,
         num_convs=1,
@@ -66,8 +72,8 @@ albu_train_transforms = [
 train_pipeline = [
     dict(type='LoadImageAlphaFromFile'),
     dict(type='LoadAnnotations'),
-    # dict(type='Resize', img_scale=(512, 512), ratio_range=(1, 1)),
-    # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
+    # dict(type='Resize', img_scale=(size, size)),
+    # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=1),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
     # dict(type='RandomRotate90', prob=0.5),
@@ -84,7 +90,7 @@ test_pipeline = [
         type='MultiScaleFlipAug',
         img_scale=(size, size),
         # img_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 1.75],
-        flip=True,
+        flip=False,
         flip_direction=['horizontal', 'vertical'],
         transforms=[
             dict(type='Resize', keep_ratio=True),
@@ -95,7 +101,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=5,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -109,8 +115,8 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='val/images',
-        ann_dir='val/labels',
+        img_dir='train/images',
+        ann_dir='train/labels',
         img_suffix=".tif",
         classes=classes,
         palette=palette,
@@ -137,13 +143,12 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-# load_from = "./weights/segformer_mit-b4_512x512_160k_ade20k_20210728_183055-7f509d7d.pth"
-load_from = None
+load_from = None #"./weights/upernet_swin_base_patch4_window12_512x512_160k_ade20k_pretrain_384x384_22K_20210531_125459-429057bf.pth"
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_epochs = 12
+total_epochs = 10
 # optimizer
 optimizer = dict(
     type='AdamW',
@@ -168,8 +173,8 @@ lr_config = dict(
     by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=12)
-evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
+checkpoint_config = dict(by_epoch=True, interval=total_epochs)
+evaluation = dict(by_epoch=True, interval=total_epochs, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/cswb384_1x_16bs_all'
+work_dir = './work_dirs/remote2/swb384_22k_10e_10bs_fzn_all'

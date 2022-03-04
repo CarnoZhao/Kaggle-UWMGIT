@@ -50,7 +50,7 @@ classes = ["x","field", "wood", "grass", "water", "building", "unused"]
 palette = [[0,0,0], [120, 120, 120], [180, 120, 120], [6, 230, 230], [80, 50, 50], [4, 200, 3], [120, 120, 80]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], multiply=255., to_rgb=True)
-size = 384
+size = 640
 # crop_size = (256, 256)
 albu_train_transforms = [
     dict(type='ColorJitter', p=0.5),
@@ -86,7 +86,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=6,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -98,7 +98,7 @@ data = dict(
         classes=classes,
         palette=palette,
         use_mosaic=True,
-        mosaic_prob=0.5,
+        mosaic_prob=0.1,
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
@@ -133,12 +133,14 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-load_from = None # "./work_dirs/binzhou/convx_l_2x_ft_all/epoch_24.pth"
+# load_from = None # "./work_dirs/binzhou/convx_l_2x_2lr_mos5v2_aug0_all_t2_512_ft/epoch_24.pth"
+load_from = "./work_dirs/binzhou/convx_l_10x_2lr_mos25v2_aug0_all_t2_512_ft2/epoch_96.pth"
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
+find_unused_parameters = True
 
-nx = 20
+nx = 8
 total_epochs = int(round(12 * nx))
 # optimizer
 optimizer = dict(constructor='LearningRateDecayOptimizerConstructor', type='AdamW', 
@@ -159,8 +161,8 @@ lr_config = dict(policy='poly',
                  power=1.0, min_lr=0.0, by_epoch=False)
 # runtime settings
 runner = dict(type='EpochBasedRunner', max_epochs=total_epochs)
-checkpoint_config = dict(by_epoch=True, interval=total_epochs)
+checkpoint_config = dict(by_epoch=True, interval=12, save_optimizer=False)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/binzhou/convx_l_{nx}x_2lr_mos5v2_aug0_all_t2_512sc'
+work_dir = f'./work_dirs/binzhou/convx_l_{nx}x_2lr_mos1v2_aug0_all_t2_640_ft'

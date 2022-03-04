@@ -5,29 +5,35 @@ norm_cfg = dict(type='SyncBN', requires_grad=True)
 backbone_norm_cfg = dict(type='LN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/cswin_base_384.pth",
+    pretrained='weights/swin_small_patch4_window7_224.pth',
     backbone=dict(
-        type='CSWin',
-        in_chans=4,
-        embed_dim=96,
+        type='SwinTransformer',
+        in_channels=4,
+        pretrain_img_size=224,
+        embed_dims=96,
         patch_size=4,
-        depth=[2,4,32,2],
-        num_heads=[4,8,16,32],
-        split_size=[1,2,7,7],
-        mlp_ratio=4.,
+        window_size=7,
+        mlp_ratio=4,
+        depths=[2, 2, 18, 2],
+        num_heads=[3, 6, 12, 24],
+        strides=(4, 2, 2, 2),
+        out_indices=(0, 1, 2, 3),
         qkv_bias=True,
         qk_scale=None,
+        patch_norm=True,
         drop_rate=0.,
         attn_drop_rate=0.,
-        drop_path_rate=0.6,
-        use_chk=False),
+        drop_path_rate=0.3,
+        use_abs_pos_embed=False,
+        act_cfg=dict(type='GELU'),
+        norm_cfg=backbone_norm_cfg),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[96,192,384,768],
+        in_channels=[96, 192, 384, 768],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
-        dropout_ratio=0.1,
+        dropout_ratio=0.2,
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
@@ -40,7 +46,7 @@ model = dict(
         channels=256,
         num_convs=1,
         concat_input=False,
-        dropout_ratio=0.1,
+        dropout_ratio=0.2,
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
@@ -66,7 +72,7 @@ albu_train_transforms = [
 train_pipeline = [
     dict(type='LoadImageAlphaFromFile'),
     dict(type='LoadAnnotations'),
-    # dict(type='Resize', img_scale=(512, 512), ratio_range=(1, 1)),
+    # dict(type='Resize', img_scale=(size, size)),
     # dict(type='RandomCrop', crop_size=crop_size, cat_max_ratio=0.75),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
@@ -109,8 +115,8 @@ data = dict(
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='val/images',
-        ann_dir='val/labels',
+        img_dir='train/images',
+        ann_dir='train/labels',
         img_suffix=".tif",
         classes=classes,
         palette=palette,
@@ -172,4 +178,4 @@ checkpoint_config = dict(by_epoch=True, interval=12)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = './work_dirs/remote2/cswb384_1x_16bs_all'
+work_dir = './work_dirs/remote2/sws384_22k_1x_16bs_2drop_all'

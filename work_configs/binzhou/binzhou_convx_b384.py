@@ -1,4 +1,4 @@
-num_classes = 7
+num_classes = 6
 
 # model settings
 norm_cfg = dict(type='SyncBN', requires_grad=True)
@@ -9,14 +9,14 @@ model = dict(
         type='ConvNeXt',
         in_chans=3,
         depths=[3, 3, 27, 3], 
-        dims=[192, 384, 768, 1536], 
+        dims=[128, 256, 512, 1024], 
         drop_path_rate=0.4,
         layer_scale_init_value=1.0,
         out_indices=[0, 1, 2, 3],
     ),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[192, 384, 768, 1536],
+        in_channels=[128, 256, 512, 1024],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
@@ -28,7 +28,7 @@ model = dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
     auxiliary_head=dict(
         type='FCNHead',
-        in_channels=768,
+        in_channels=512,
         in_index=2,
         channels=256,
         num_convs=1,
@@ -46,11 +46,11 @@ model = dict(
 # dataset settings
 dataset_type = 'CustomDataset'
 data_root = 'data/binzhou/'
-classes = ["x","field", "wood", "grass", "water", "building", "unused"]
-palette = [[0,0,0], [120, 120, 120], [180, 120, 120], [6, 230, 230], [80, 50, 50], [4, 200, 3], [120, 120, 80]]
+classes = ["field", "wood", "grass", "water", "building", "unused"]
+palette = [[120, 120, 120], [180, 120, 120], [6, 230, 230], [80, 50, 50], [4, 200, 3], [120, 120, 80]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], multiply=255., to_rgb=True)
-size = 384
+size = 256
 # crop_size = (256, 256)
 albu_train_transforms = [
     dict(type='ColorJitter', p=0.5),
@@ -86,27 +86,27 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=16,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='train2/semi_train_GF',
-        ann_dir='train2/semi_train_LT',
-        img_suffix="_GF.tif",
-        seg_map_suffix='_LT.tif',
+        img_dir='train/images',
+        ann_dir='train/labels',
+        img_suffix=".tif",
+        seg_map_suffix='.tif',
         classes=classes,
         palette=palette,
         use_mosaic=True,
-        mosaic_prob=0.5,
+        mosaic_prob=0.25,
         pipeline=train_pipeline),
     val=dict(
         type=dataset_type,
         data_root=data_root,
-        img_dir='train2/semi_train_GF',
-        ann_dir='train2/semi_train_LT',
-        img_suffix="_GF.tif",
-        seg_map_suffix='_LT.tif',
+        img_dir='test/images',
+        ann_dir='test/labels',
+        img_suffix=".tif",
+        seg_map_suffix='.tif',
         classes=classes,
         palette=palette,
         pipeline=test_pipeline),
@@ -133,23 +133,19 @@ log_config = dict(
 # yapf:enable
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-load_from = None # "./work_dirs/binzhou/convx_l_2x_ft_all/epoch_24.pth"
+load_from = None # "./weights/upernet_convnext_base_22k_640x640.pth"
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-nx = 20
+nx = 10
 total_epochs = int(round(12 * nx))
 # optimizer
 optimizer = dict(constructor='LearningRateDecayOptimizerConstructor', type='AdamW', 
                  lr=0.0001 * 2, betas=(0.9, 0.999), weight_decay=0.05,
                  paramwise_cfg={'decay_rate': 0.9,
                                 'decay_type': 'stage_wise',
-                                'num_layers': 12,
-                                # 'custom_keys': {
-                                #     'head': dict(lr_mult=10.)
-                                # }
-                            })
+                                'num_layers': 12})
 optimizer_config = dict(type='Fp16OptimizerHook', loss_scale=512.)
 # learning policy
 lr_config = dict(policy='poly',
@@ -163,4 +159,4 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs)
 evaluation = dict(by_epoch=True, interval=12, metric='mIoU', pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/binzhou/convx_l_{nx}x_2lr_mos5v2_aug0_all_t2_512sc'
+work_dir = f'./work_dirs/binzhou/convx_b_{nx}x_2lr_mos25_aug0_all'
