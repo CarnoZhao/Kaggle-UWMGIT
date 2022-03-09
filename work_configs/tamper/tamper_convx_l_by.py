@@ -4,19 +4,20 @@ num_classes = 2
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/convnext_tiny_1k_224_ema.pth",
+    pretrained="./weights/convnext_large_22k_224.pth",
     backbone=dict(
         type='ConvNeXt',
         in_chans=3,
+        bayar=True,
         depths=[3, 3, 27, 3], 
-        dims=[96, 192, 384, 768], 
+        dims=[192, 384, 768, 1536], 
         drop_path_rate=0.4,
         layer_scale_init_value=1.0,
         out_indices=[0, 1, 2, 3],
     ),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[96, 192, 384, 768],
+        in_channels=[192, 384, 768, 1536],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
@@ -24,11 +25,13 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0)),
+        loss_decode=[
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.25),
+            dict(type='DiceLoss', loss_weight=0.75)
+            ]),
     auxiliary_head=dict(
         type='FCNHead',
-        in_channels=384,
+        in_channels=768,
         in_index=2,
         channels=256,
         num_convs=1,
@@ -41,7 +44,7 @@ model = dict(
             type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
     # model training and testing settings
     train_cfg=dict(),
-    test_cfg=dict(mode='slide', stride = (512, 512), crop_size = (512, 512)))
+    test_cfg=dict())
 
 # dataset settings
 dataset_type = 'CustomDataset'
@@ -51,21 +54,25 @@ palette = [[0,0,0], [255,255,255]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
 size = 512
+crop_size = 512
+ratio = size / crop_size
+model['test_cfg'] = dict(mode='slide', stride = (size, size), crop_size = (size, size))
 # crop_size = (256, 256)
 albu_train_transforms = [
     dict(type='ColorJitter', p=0.5),
-    dict(type='ChannelShuffle', p=0.5),
-    dict(type='ToGray', p=0.5),
+    # dict(type='Affine', rotate=5, shear=5, p=0.5),
+    # dict(type='RandomResizedCrop', always_apply = True, height = 512, width = 512, scale = (0.9, 1.1), ratio = (0.9, 1.1)),
+    # dict(type='ToGray', p=0.5),
 ]
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations'),
-    dict(type='RandomCrop', cat_max_ratio = 0.95, crop_size = (size, size)),
-    dict(type='Resize', img_scale=(size, size)),
+    dict(type='RandomCrop', cat_max_ratio = 0.9, crop_size = (crop_size, crop_size)),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
     dict(type='RandomRotate90', prob=0.5),
-    # dict(type='Albu', transforms=albu_train_transforms),
+    dict(type='Albu', transforms=albu_train_transforms),
+    dict(type='Resize', img_scale=(size, size)),
     # dict(type='PhotoMetricDistortion'),
     dict(type='Normalize', **img_norm_cfg),
     dict(type='Pad', size=(size, size), pad_val=0, seg_pad_val=255),
@@ -77,7 +84,7 @@ test_pipeline = [
     dict(
         type='MultiScaleFlipAug',
         img_scale=None,
-        img_ratios=[1.0],
+        img_ratios=[ratio],
         flip=False,
         flip_direction=['horizontal', 'vertical'],
         transforms=[
@@ -89,37 +96,27 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=24,
+    samples_per_gpu=8,
     workers_per_gpu=4,
-    train=[dict(
-            type=dataset_type,
-            data_root=data_root,
-            img_dir='train/img',
-            ann_dir='train/msk',
-            img_suffix=".jpg",
-            seg_map_suffix='.png',
-            split="train/splits/fold_0.txt",
-            classes=classes,
-            palette=palette,
-            pipeline=train_pipeline),
-        dict(
-            type=dataset_type,
-            data_root=data_root,
-            img_dir='train2/img',
-            ann_dir='train2/msk',
-            img_suffix=".jpg",
-            seg_map_suffix='.png',
-            classes=classes,
-            palette=palette,
-            pipeline=train_pipeline)],
-    val=dict(
+    train=dict(
         type=dataset_type,
         data_root=data_root,
         img_dir='train/img',
         ann_dir='train/msk',
         img_suffix=".jpg",
         seg_map_suffix='.png',
-        split="train/splits/holdout_0.txt",
+        classes=classes,
+        palette=palette,
+        use_mosaic=False,
+        mosaic_prob=0.5,
+        pipeline=train_pipeline),
+    val=dict(
+        type=dataset_type,
+        data_root=data_root,
+        img_dir='train2/img',
+        ann_dir='train2/msk',
+        img_suffix=".jpg",
+        seg_map_suffix='.png',
         classes=classes,
         palette=palette,
         pipeline=test_pipeline),
@@ -134,6 +131,7 @@ data = dict(
         classes=classes,
         palette=palette,
         pipeline=test_pipeline))
+
 
 # yapf:disable
 log_config = dict(
@@ -150,7 +148,7 @@ resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-nx = 12
+nx = 6
 total_epochs = int(round(12 * nx))
 # optimizer
 optimizer = dict(constructor='LearningRateDecayOptimizerConstructor', type='AdamW', 
@@ -171,5 +169,4 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs, save_optimizer=Fa
 evaluation = dict(by_epoch=True, interval=6, metric=['mIoU', 'mFscore'], pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/tamper/convx_l_{nx}x_ext_maxr_aug0_v2'
-
+work_dir = f'./work_dirs/tamper/convx_l_{nx}x_dice2_aug1'

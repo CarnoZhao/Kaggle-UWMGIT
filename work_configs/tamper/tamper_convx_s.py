@@ -4,7 +4,7 @@ num_classes = 2
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/convnext_tiny_1k_224_ema.pth",
+    pretrained="./weights/convnext_small_1k_224_ema.pth",
     backbone=dict(
         type='ConvNeXt',
         in_chans=3,
@@ -89,7 +89,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=24,
+    samples_per_gpu=16,
     workers_per_gpu=4,
     train=[dict(
             type=dataset_type,
@@ -171,5 +171,5 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs, save_optimizer=Fa
 evaluation = dict(by_epoch=True, interval=6, metric=['mIoU', 'mFscore'], pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/tamper/convx_l_{nx}x_ext_maxr_aug0_v2'
+work_dir = f'./work_dirs/tamper/convx_s_{nx}x_ext_aug0_v2'
 
