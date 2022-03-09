@@ -256,6 +256,9 @@ class EncoderDecoder(BaseSegmentor):
         seg_logit = self.inference(img, img_meta, rescale)
         if self.test_cfg.get("logits", False):
             seg_pred = seg_logit# .argmax(dim=1)
+        elif self.test_cfg.get("binary_thres", None) is not None:
+            seg_pred = seg_logit[:,1].sigmoid() > self.test_cfg.get("binary_thres")
+            seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
         if torch.onnx.is_in_onnx_export():
@@ -282,6 +285,9 @@ class EncoderDecoder(BaseSegmentor):
         seg_logit /= len(imgs)
         if self.test_cfg.get("logits", False):
             seg_pred = seg_logit# .argmax(dim=1)
+        elif self.test_cfg.get("binary_thres", None) is not None:
+            seg_pred = seg_logit.softmax(dim=1)[:,1] > self.test_cfg.get("binary_thres")
+            seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
         seg_pred = seg_pred.cpu().numpy()
