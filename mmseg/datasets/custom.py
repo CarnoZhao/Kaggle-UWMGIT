@@ -95,8 +95,10 @@ class CustomDataset(Dataset):
         if self.use_mosaic:
             self.mosaic_prob = mosaic_prob
             self.mosaic_center = mosaic_center
-            self.load_pipeline = Compose(pipeline[:2])
-            self.pipeline = Compose(pipeline[2:])
+            mosaic_at = [_['type'] == "Mosaic" for _ in pipeline].index(True)
+            self.load_pipeline = Compose(pipeline[:mosaic_at])
+            print(self.load_pipeline)
+            self.pipeline = Compose(pipeline[mosaic_at + 1:])
         else:
             self.pipeline = Compose(pipeline)
         self.img_dir = img_dir
