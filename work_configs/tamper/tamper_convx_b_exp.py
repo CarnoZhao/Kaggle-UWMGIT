@@ -4,19 +4,19 @@ num_classes = 2
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/convnext_large_22k_224.pth",
+    pretrained="./weights/convnext_base_22k_224.pth",
     backbone=dict(
         type='ConvNeXt',
         in_chans=3,
         depths=[3, 3, 27, 3], 
-        dims=[192, 384, 768, 1536], 
+        dims=[128, 256, 512, 1024], 
         drop_path_rate=0.4,
         layer_scale_init_value=1.0,
         out_indices=[0, 1, 2, 3],
     ),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[192, 384, 768, 1536],
+        in_channels=[128, 256, 512, 1024],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
@@ -24,13 +24,18 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
+        # loss_decode=[
+        #     dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.75),
+        #     dict(type='DiceLoss', loss_weight=0.25)
+        #     ]
         loss_decode=[
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.75),
-            dict(type='DiceLoss', loss_weight=0.25)
-            ]),
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+            dict(type='LovaszLoss', loss_weight=0.6, reduction='none')
+            ]
+        ),
     auxiliary_head=dict(
         type='FCNHead',
-        in_channels=768,
+        in_channels=512,
         in_index=2,
         channels=256,
         num_convs=1,
@@ -39,8 +44,13 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
-        loss_decode=dict(
-            type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)),
+        loss_decode=[
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=1.0),
+            dict(type='LovaszLoss', loss_weight=0.6, reduction='none')
+            ]
+        # loss_decode=dict(
+        #     type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.4)
+        ),
     # model training and testing settings
     train_cfg=dict(),
     test_cfg=dict())
@@ -68,10 +78,11 @@ albu_train_transforms = [
 train_pipeline = [
     dict(type='LoadImageFromFile'),
     dict(type='LoadAnnotations'),
-    dict(type='RandomCrop', cat_max_ratio = 0.9, crop_size = (crop_size, crop_size)),
+    dict(type='RandomCrop', cat_max_ratio = 0.75, crop_size = (crop_size, crop_size)),
+    dict(type='RandomCopyMove', prob=0.5, mix_prob=0.5),
     dict(type='RandomFlip', prob=0.5, direction='horizontal'),
     dict(type='RandomFlip', prob=0.5, direction='vertical'),
-    dict(type='RandomRotate90', prob=0.5),
+    # dict(type='RandomRotate90', prob=0.5),
     dict(type='Albu', transforms=albu_train_transforms),
     dict(type='Resize', img_scale=(size, size)),
     # dict(type='PhotoMetricDistortion'),
@@ -90,6 +101,7 @@ test_pipeline = [
         flip_direction=['horizontal', 'vertical'],
         transforms=[
             dict(type='Resize', keep_ratio=True),
+            dict(type='ResizeToMultiple', size_divisor=32),
             dict(type='RandomFlip'),
             dict(type='Normalize', **img_norm_cfg),
             dict(type='ImageToTensor', keys=['img']),
@@ -97,7 +109,7 @@ test_pipeline = [
         ])
 ]
 data = dict(
-    samples_per_gpu=8,
+    samples_per_gpu=12,
     workers_per_gpu=4,
     train=dict(
         type=dataset_type,
@@ -153,7 +165,7 @@ nx = 6
 total_epochs = int(round(12 * nx))
 # optimizer
 optimizer = dict(constructor='LearningRateDecayOptimizerConstructor', type='AdamW', 
-                 lr=0.0001, betas=(0.9, 0.999), weight_decay=0.05,
+                 lr=0.0001, betas=(0.9, 0.999), weight_decay=0.01,
                  paramwise_cfg={'decay_rate': 0.99,
                                 'decay_type': 'stage_wise',
                                 'num_layers': 12})
@@ -170,4 +182,4 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs, save_optimizer=Fa
 evaluation = dict(by_epoch=True, interval=6, metric=['mIoU', 'mFscore'], pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/tamper/convx_l_{nx}x_dice_aug1_dec'
+work_dir = f'./work_dirs/tamper/convx_b_exp_{nx}x_lova1_aug1.1_dec1_cpmv'

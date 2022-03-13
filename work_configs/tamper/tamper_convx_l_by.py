@@ -26,8 +26,8 @@ model = dict(
         norm_cfg=norm_cfg,
         align_corners=False,
         loss_decode=[
-            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.25),
-            dict(type='DiceLoss', loss_weight=0.75)
+            dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.75),
+            dict(type='DiceLoss', loss_weight=0.25)
             ]),
     auxiliary_head=dict(
         type='FCNHead',
@@ -169,4 +169,4 @@ checkpoint_config = dict(by_epoch=True, interval=total_epochs, save_optimizer=Fa
 evaluation = dict(by_epoch=True, interval=6, metric=['mIoU', 'mFscore'], pre_eval=True)
 fp16 = dict(loss_scale=512.0)
 
-work_dir = f'./work_dirs/tamper/convx_l_{nx}x_dice2_aug1'
+work_dir = f'./work_dirs/tamper/convx_l_by_{nx}x_dice_aug1'
