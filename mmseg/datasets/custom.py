@@ -92,7 +92,8 @@ class CustomDataset(Dataset):
                  use_mosaic=False,
                  mosaic_center=(0.25, 0.75),
                  mosaic_prob=0.5,
-                 palette=None):
+                 palette=None,
+                 gt_seg_map_loader_cfg=None):
         self.use_mosaic = use_mosaic
         if self.use_mosaic:
             self.mosaic_prob = mosaic_prob
