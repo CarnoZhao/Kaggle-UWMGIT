@@ -244,6 +244,9 @@ class LovaszLoss(nn.Module):
         class_weight (list[float] | str, optional): Weight of each class. If in
             str format, read them from a file. Defaults to None.
         loss_weight (float, optional): Weight of the loss. Defaults to 1.0.
+        loss_name (str, optional): Name of the loss item. If you want this loss
+            item to be included into the backward graph, `loss_` must be the
+            prefix of the name. Defaults to 'loss_lovasz'.
     """
 
     def __init__(self,
