@@ -321,10 +321,17 @@ class CustomDataset(Dataset):
         """
         result_files = []
         for res, idx in zip(results, indices):
-            result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
-            if not osp.exists(osp.dirname(result_file)):
-                os.system(f"mkdir -p {osp.dirname(result_file)}")
-            Image.fromarray(res.astype(np.uint8)).save(result_file)
+            if len(res.shape) == 3:
+                result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".npy")
+                if not osp.exists(osp.dirname(result_file)):
+                    os.system(f"mkdir -p {osp.dirname(result_file)}")
+                np.save(result_file, res.astype(np.float32))
+            else:
+
+                result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
+                if not osp.exists(osp.dirname(result_file)):
+                    os.system(f"mkdir -p {osp.dirname(result_file)}")
+                Image.fromarray(res.astype(np.uint8)).save(result_file)
 
         return result_files, imgfile_prefix
 
