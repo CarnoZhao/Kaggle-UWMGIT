@@ -13,6 +13,8 @@ from mmcv.runner import BaseModule, ModuleList, Sequential, _load_checkpoint
 from ...utils import get_root_logger
 from ..builder import BACKBONES
 from ..utils import PatchEmbed, nchw_to_nlc, nlc_to_nchw
+import torch.utils.checkpoint as cp
+
 
 
 class MixFFN(BaseModule):
@@ -209,7 +211,8 @@ class TransformerEncoderLayer(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='LN'),
                  batch_first=True,
-                 sr_ratio=1):
+                 sr_ratio=1,
+                 with_cp=False):
         super(TransformerEncoderLayer, self).__init__()
 
         # The ret[0] of build_norm_layer is norm name.
@@ -236,11 +239,24 @@ class TransformerEncoderLayer(BaseModule):
             dropout_layer=dict(type='DropPath', drop_prob=drop_path_rate),
             act_cfg=act_cfg)
 
-    def forward(self, x, hw_shape):
-        x = self.attn(self.norm1(x), hw_shape, identity=x)
-        x = self.ffn(self.norm2(x), hw_shape, identity=x)
-        return x
+        self.with_cp = with_cp
 
+    #  def forward(self, x, hw_shape):
+    #      x = self.attn(self.norm1(x), hw_shape, identity=x)
+    #      x = self.ffn(self.norm2(x), hw_shape, identity=x)
+    #      return x
+
+    def forward(self, x, hw_shape):
+
+        def _inner_forward(x):
+            x = self.attn(self.norm1(x), hw_shape, identity=x)
+            x = self.ffn(self.norm2(x), hw_shape, identity=x)
+            return x
+        if self.with_cp and x.requires_grad:
+            out = cp.checkpoint(_inner_forward, x)
+        else:
+            out = _inner_forward(x)
+        return out
 
 @BACKBONES.register_module()
 class MixVisionTransformer(BaseModule):
@@ -301,6 +317,7 @@ class MixVisionTransformer(BaseModule):
                  act_cfg=dict(type='GELU'),
                  norm_cfg=dict(type='LN', eps=1e-6),
                  pretrained=None,
+                 with_cp=False,
                  init_cfg=None):
         super().__init__()
 
@@ -354,6 +371,7 @@ class MixVisionTransformer(BaseModule):
                     qkv_bias=qkv_bias,
                     act_cfg=act_cfg,
                     norm_cfg=norm_cfg,
+                    with_cp=with_cp,
                     sr_ratio=sr_ratios[i]) for idx in range(num_layer)
             ])
             in_channels = embed_dims_i
