@@ -4,16 +4,19 @@ num_classes = 2
 norm_cfg = dict(type='SyncBN', requires_grad=True)
 model = dict(
     type='EncoderDecoder',
-    pretrained="./weights/efficientnet-b7_3rdparty_8xb32-aa-advprop_in1k_20220119-c6dbff10.pth",
+    pretrained="./weights/convnext_base_22k_224.pth",
     backbone=dict(
-        type='EfficientNet',
-        arch='b7',
+        type='ConvNeXt',
+        in_chans=3,
+        depths=[3, 3, 27, 3], 
+        dims=[128, 256, 512, 1024], 
         drop_path_rate=0.4,
-        out_indices=[2, 3, 4, 6],
+        layer_scale_init_value=1.0,
+        out_indices=[0, 1, 2, 3],
     ),
     decode_head=dict(
         type='UPerHead',
-        in_channels=[48, 80, 224, 2560],
+        in_channels=[128, 256, 512, 1024],
         in_index=[0, 1, 2, 3],
         pool_scales=(1, 2, 3, 6),
         channels=512,
@@ -21,6 +24,10 @@ model = dict(
         num_classes=num_classes,
         norm_cfg=norm_cfg,
         align_corners=False,
+        # loss_decode=[
+        #     dict(type='CrossEntropyLoss', use_sigmoid=False, loss_weight=0.75),
+        #     dict(type='DiceLoss', loss_weight=0.25)
+        #     ]
         loss_decode=[
             dict(type='CrossEntropyLoss', loss_weight=1.0),
             dict(type='LovaszLoss', loss_weight=1.0, per_image=True)
@@ -28,7 +35,7 @@ model = dict(
         sampler=dict(type='OHEMPixelSampler', thresh=0.7, min_kept=100000)),
     auxiliary_head=dict(
         type='FCNHead',
-        in_channels=224,
+        in_channels=512,
         in_index=2,
         channels=256,
         num_convs=1,
@@ -53,8 +60,8 @@ classes = ["0", "1"]
 palette = [[0,0,0], [255,255,255]]
 img_norm_cfg = dict(
     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-size = 768
-crop_size = 768
+size = 1024
+crop_size = 1024
 ratio = 2.0
 model['test_cfg'] = dict(mode='slide', stride = (size, size), crop_size = (size, size))
 albu_train_transforms = [
@@ -117,7 +124,19 @@ data = dict(
             palette=palette,
             use_mosaic=False,
             mosaic_prob=0.5,
-            pipeline=train_pipeline)
+            pipeline=train_pipeline),
+        dict(
+            type=dataset_type,
+            data_root=data_root,
+            img_dir='ext1/img',
+            ann_dir='ext1/msk',
+            img_suffix=".jpg",
+            seg_map_suffix='.png',
+            classes=classes,
+            palette=palette,
+            use_mosaic=False,
+            mosaic_prob=0.5,
+            pipeline=train_pipeline),
         ],
     val=[
         dict(
@@ -163,18 +182,20 @@ log_config = dict(
     interval=50, hooks=[dict(type='TextLoggerHook', by_epoch=False)])
 dist_params = dict(backend='nccl')
 log_level = 'INFO'
-load_from = None
+load_from = "./work_dirs/tamper/convx_b_team_ft2_30k/latest.pth"
 resume_from = None
 workflow = [('train', 1)]
 cudnn_benchmark = True
 
-total_iters = 40
+total_iters = 20
 # optimizer
 optimizer = dict(
+    constructor='LearningRateDecayOptimizerConstructor',
     type='AdamW',
     lr=0.0001,
     betas=(0.9, 0.999),
-    weight_decay=0.05)
+    weight_decay=0.05,
+    paramwise_cfg=dict(decay_rate=0.9, decay_type='stage_wise', num_layers=12))
 optimizer_config = dict(type='Fp16OptimizerHook', loss_scale='dynamic')
 # learning policy
 lr_config = dict(policy='poly',
@@ -185,8 +206,8 @@ lr_config = dict(policy='poly',
 # runtime settings
 
 runner = dict(type='IterBasedRunner', max_iters=total_iters * 1000)
-checkpoint_config = dict(by_epoch=False, interval=total_iters * 1000, save_optimizer=False)
+checkpoint_config = dict(by_epoch=False, interval=5 * 1000, save_optimizer=False)
 evaluation = dict(by_epoch=False, interval=10 * 1000, metric=['mIoU', 'mFscore'], pre_eval=True)
 fp16 = dict()
 
-work_dir = f'./work_dirs/tamper/eff_b7_{total_iters}k'
+work_dir = f'./work_dirs/tamper/convx_b_team_ext_{total_iters}k'
