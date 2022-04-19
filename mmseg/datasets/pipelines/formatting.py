@@ -205,10 +205,14 @@ class DefaultFormatBundle(object):
             img = np.ascontiguousarray(img.transpose(2, 0, 1))
             results['img'] = DC(to_tensor(img), stack=True)
         if 'gt_semantic_seg' in results:
+            gt_semantic_seg = results['gt_semantic_seg']
+            if len(gt_semantic_seg.shape) == 3:
+                gt_semantic_seg = np.ascontiguousarray(gt_semantic_seg.transpose(2, 0, 1))
+            else:
+                gt_semantic_seg = gt_semantic_seg[None, ...]
             # convert to long
             results['gt_semantic_seg'] = DC(
-                to_tensor(results['gt_semantic_seg'][None,
-                                                     ...].astype(np.int64)),
+                to_tensor(gt_semantic_seg.astype(np.int64)),
                 stack=True)
         return results
 

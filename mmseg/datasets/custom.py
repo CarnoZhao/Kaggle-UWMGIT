@@ -10,6 +10,7 @@ import mmcv
 import numpy as np
 from mmcv.utils import print_log
 from prettytable import PrettyTable
+import torch
 from torch.utils.data import Dataset
 
 from mmseg.core import eval_metrics, intersect_and_union, pre_eval_to_metrics
@@ -93,7 +94,10 @@ class CustomDataset(Dataset):
                  mosaic_center=(0.25, 0.75),
                  mosaic_prob=0.5,
                  palette=None,
-                 gt_seg_map_loader_cfg=None):
+                 gt_seg_map_loader_cfg=None,
+                 multi_label=False):
+
+        self.multi_label = multi_label
         self.use_mosaic = use_mosaic
         if self.use_mosaic:
             self.mosaic_prob = mosaic_prob
@@ -382,10 +386,20 @@ class CustomDataset(Dataset):
 
         for pred, index in zip(preds, indices):
             seg_map = self.get_gt_seg_map_by_idx(index)
-            pre_eval_results.append(
-                intersect_and_union(pred, seg_map, len(self.CLASSES),
-                                    self.ignore_index, self.label_map,
-                                    self.reduce_zero_label))
+            if self.multi_label:
+                ious = []
+                for i in range(len(self.CLASSES)):
+                    iou = intersect_and_union(pred[...,i], seg_map[...,i], 2,
+                                        self.ignore_index, self.label_map,
+                                        self.reduce_zero_label)
+                    ious.append(iou)
+                ious = tuple([torch.stack([_[i] for _ in ious], 0)[:,1] for i in range(len(ious[0]))])
+                pre_eval_results.append(ious)
+            else:
+                pre_eval_results.append(
+                    intersect_and_union(pred, seg_map, len(self.CLASSES),
+                                        self.ignore_index, self.label_map,
+                                        self.reduce_zero_label))
 
         return pre_eval_results
 

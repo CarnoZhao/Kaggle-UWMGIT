@@ -239,7 +239,10 @@ class EncoderDecoder(BaseSegmentor):
             seg_logit = self.slide_inference(img, img_meta, rescale)
         else:
             seg_logit = self.whole_inference(img, img_meta, rescale)
-        output = F.softmax(seg_logit, dim=1)
+        if not self.test_cfg.get("multi_label", False):
+            output = F.softmax(seg_logit, dim=1)
+        else:
+            output = F.sigmoid(seg_logit)
         flip = img_meta[0]['flip']
         if flip:
             flip_direction = img_meta[0]['flip_direction']
@@ -257,7 +260,10 @@ class EncoderDecoder(BaseSegmentor):
         if self.test_cfg.get("logits", False):
             seg_pred = seg_logit# .argmax(dim=1)
         elif self.test_cfg.get("binary_thres", None) is not None:
-            seg_pred = seg_logit[:,1].sigmoid() > self.test_cfg.get("binary_thres")
+            seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
+            seg_pred = seg_pred.long()
+        elif self.test_cfg.get("multi_label", False):
+            seg_pred = seg_logit.round().permute(0, 2, 3, 1)
             seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
@@ -286,7 +292,10 @@ class EncoderDecoder(BaseSegmentor):
         if self.test_cfg.get("logits", False):
             seg_pred = seg_logit# .argmax(dim=1)
         elif self.test_cfg.get("binary_thres", None) is not None:
-            seg_pred = seg_logit.softmax(dim=1)[:,1] > self.test_cfg.get("binary_thres")
+            seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
+            seg_pred = seg_pred.long()
+        elif self.test_cfg.get("multi_label", False):
+            seg_pred = seg_logit.round().permute(0, 2, 3, 1)
             seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
