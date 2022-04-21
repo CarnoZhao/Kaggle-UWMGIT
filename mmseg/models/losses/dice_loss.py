@@ -13,6 +13,7 @@ from .utils import get_class_weight, weighted_loss
 def dice_loss(pred,
               target,
               valid_mask,
+              multi_label=False,
               smooth=1,
               exponent=2,
               class_weight=None,
@@ -25,7 +26,7 @@ def dice_loss(pred,
             dice_loss = binary_dice_loss(
                 pred[:, i],
                 target[..., i],
-                valid_mask=valid_mask,
+                valid_mask=valid_mask[:,i] if multi_label else valid_mask,
                 smooth=smooth,
                 exponent=exponent)
             if class_weight is not None:
@@ -80,6 +81,7 @@ class DiceLoss(nn.Module):
                  class_weight=None,
                  loss_weight=1.0,
                  ignore_index=255,
+                 multi_label=False,
                  loss_name='loss_dice',
                  **kwards):
         super(DiceLoss, self).__init__()
@@ -90,6 +92,7 @@ class DiceLoss(nn.Module):
         self.loss_weight = loss_weight
         self.ignore_index = ignore_index
         self._loss_name = loss_name
+        self.multi_label=multi_label
 
     def forward(self,
                 pred,
@@ -105,16 +108,23 @@ class DiceLoss(nn.Module):
         else:
             class_weight = None
 
-        pred = F.softmax(pred, dim=1)
-        num_classes = pred.shape[1]
-        one_hot_target = F.one_hot(
-            torch.clamp(target.long(), 0, num_classes - 1),
-            num_classes=num_classes)
+        if not self.multi_label:
+            pred = F.softmax(pred, dim=1)
+            num_classes = pred.shape[1]
+            one_hot_target = F.one_hot(
+                torch.clamp(target.long(), 0, num_classes - 1),
+                num_classes=num_classes)
+        else:
+            pred = torch.sigmoid(pred)
+            num_classes = pred.shape[1]
+            one_hot_target = torch.clamp(target.long(), 0, num_classes - 1).permute(0,2,3,1)
+
         valid_mask = (target != self.ignore_index).long()
 
         loss = self.loss_weight * dice_loss(
             pred,
             one_hot_target,
+            multi_label=self.multi_label,
             valid_mask=valid_mask,
             reduction=reduction,
             avg_factor=avg_factor,

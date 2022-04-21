@@ -5,6 +5,7 @@ import warnings
 from collections import OrderedDict
 from functools import reduce
 from PIL import Image
+import cv2
 
 import mmcv
 import numpy as np
@@ -326,12 +327,11 @@ class CustomDataset(Dataset):
         result_files = []
         for res, idx in zip(results, indices):
             if len(res.shape) == 3 and not np.issubdtype(res.dtype, np.integer):
-                result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".npy")
+                result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
                 if not osp.exists(osp.dirname(result_file)):
                     os.system(f"mkdir -p {osp.dirname(result_file)}")
-                np.save(result_file, res.astype(np.float32))
+                cv2.imwrite(result_file, (res * 65535).astype(np.uint16))
             else:
-
                 result_file = osp.join(imgfile_prefix, self.img_infos[idx]["filename"][:-4] + ".png")
                 if not osp.exists(osp.dirname(result_file)):
                     os.system(f"mkdir -p {osp.dirname(result_file)}")
