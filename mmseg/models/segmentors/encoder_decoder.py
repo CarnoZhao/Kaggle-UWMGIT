@@ -257,8 +257,10 @@ class EncoderDecoder(BaseSegmentor):
     def simple_test(self, img, img_meta, rescale=True):
         """Simple test with single image."""
         seg_logit = self.inference(img, img_meta, rescale)
-        if self.test_cfg.get("logits", False):
-            seg_pred = seg_logit# .argmax(dim=1)
+        if self.test_cfg.get("logits", False) and self.test_cfg.get("multi_label", False):
+            seg_pred = seg_logit.permute(0, 2, 3, 1)# .argmax(dim=1)
+        elif self.test_cfg.get("logits", False):
+            seg_pred = seg_logit
         elif self.test_cfg.get("binary_thres", None) is not None:
             seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
             seg_pred = seg_pred.long()
@@ -289,8 +291,10 @@ class EncoderDecoder(BaseSegmentor):
             cur_seg_logit = self.inference(imgs[i], img_metas[i], rescale)
             seg_logit += cur_seg_logit
         seg_logit /= len(imgs)
-        if self.test_cfg.get("logits", False):
-            seg_pred = seg_logit# .argmax(dim=1)
+        if self.test_cfg.get("logits", False) and self.test_cfg.get("multi_label", False):
+            seg_pred = seg_logit.permute(0, 2, 3, 1)# .argmax(dim=1)
+        elif self.test_cfg.get("logits", False):
+            seg_pred = seg_logit
         elif self.test_cfg.get("binary_thres", None) is not None:
             seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
             seg_pred = seg_pred.long()
