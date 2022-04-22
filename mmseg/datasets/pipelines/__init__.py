@@ -2,7 +2,7 @@
 from .compose import Compose
 from .formatting import (Collect, ImageToTensor, ToDataContainer, ToTensor,
                          Transpose, to_tensor)
-from .loading import LoadAnnotations, LoadImageFromFile
+from .loading import LoadAnnotations, LoadImageFromFile, Load3ImageFromFile
 from .test_time_aug import MultiScaleFlipAug
 from .transforms import (CLAHE, AdjustGamma, Normalize, Pad,
                          PhotoMetricDistortion, RandomCrop, RandomFlip,
@@ -15,5 +15,6 @@ __all__ = [
     'MultiScaleFlipAug', 'Resize', 'RandomFlip', 'Pad', 'RandomCrop',
     'Normalize', 'SegRescale', 'PhotoMetricDistortion', 'RandomRotate',
     'AdjustGamma', 'CLAHE', 'Rerange', 'RGB2Gray',
-    'RandomCopyMove'
+    'RandomCopyMove',
+    'Load3ImageFromFile'
 ]
