@@ -490,7 +490,7 @@ class CustomDataset(Dataset):
         """
         if isinstance(metric, str):
             metric = [metric]
-        allowed_metrics = ['mIoU', 'mDice', 'mFscore']
+        allowed_metrics = ['mIoU', 'mDice', 'mFscore', 'imDice', 'imIoU', 'imFscore']
         if not set(metric).issubset(set(allowed_metrics)):
             raise KeyError('metric {} is not supported'.format(metric))
 
