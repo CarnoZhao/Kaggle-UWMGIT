@@ -220,6 +220,8 @@ class SMPUnet(BaseSegmentor):
                 size = img.shape[2:]
             else:
                 size = img_meta[0]['ori_shape'][:2]
+            if 'pad_shape' in img_meta[0] and img_meta[0]["pad_shape"] != img_meta[0]["img_shape"]:
+                seg_logit = seg_logit[...,:img_meta[0]["img_shape"][0],:img_meta[0]["img_shape"][1]]
             seg_logit = resize(
                 seg_logit,
                 size=size,
