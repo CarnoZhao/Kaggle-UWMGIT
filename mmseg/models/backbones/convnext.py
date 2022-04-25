@@ -17,33 +17,6 @@ from timm.models.layers import trunc_normal_, DropPath
 from mmseg.utils import get_root_logger, load_checkpoint
 from mmseg.models.builder import BACKBONES
 
-class BayarConv2d(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=5, stride=1, padding=2):
-        self.in_channels = in_channels
-        self.out_channels = out_channels
-        self.kernel_size = kernel_size
-        self.stride = stride
-        self.padding = padding
-        self.minus1 = (torch.ones(self.in_channels, self.out_channels, 1) * -1.000)
-
-        super(BayarConv2d, self).__init__()
-        # only (kernel_size ** 2 - 1) trainable params as the center element is always -1
-        self.kernel = nn.Parameter(torch.rand(self.in_channels, self.out_channels, kernel_size ** 2 - 1),
-                                   requires_grad=True)
-
-
-    def bayarConstraint(self):
-        self.kernel.data = self.kernel.permute(2, 0, 1)
-        self.kernel.data = torch.div(self.kernel.data, self.kernel.data.sum(0))
-        self.kernel.data = self.kernel.permute(1, 2, 0)
-        ctr = self.kernel_size ** 2 // 2
-        real_kernel = torch.cat((self.kernel[:, :, :ctr], self.minus1.to(self.kernel.device), self.kernel[:, :, ctr:]), dim=2)
-        real_kernel = real_kernel.reshape((self.out_channels, self.in_channels, self.kernel_size, self.kernel_size))
-        return real_kernel
-
-    def forward(self, x):
-        x = F.conv2d(x, self.bayarConstraint(), stride=self.stride, padding=self.padding)
-        return x
 
 class Block(nn.Module):
     r""" ConvNeXt Block. There are two equivalent implementations:
@@ -123,16 +96,12 @@ class ConvNeXt(nn.Module):
         layer_scale_init_value (float): Init value for Layer Scale. Default: 1e-6.
         head_init_scale (float): Init scaling value for classifier weights and biases. Default: 1.
     """
-    def __init__(self, in_chans=3, bayar=False, depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], 
+    def __init__(self, in_chans=3, depths=[3, 3, 9, 3], dims=[96, 192, 384, 768], 
                  drop_path_rate=0., layer_scale_init_value=1e-6, out_indices=[0, 1, 2, 3], pretrained=None
                  ):
         super().__init__()
         self.pretrained = pretrained
         self.in_chans = in_chans
-        self.bayar = bayar
-        if self.bayar:
-            self.bayar_conv = BayarConv2d(in_chans, in_chans)
-            self.in_chans = in_chans * 2
 
         self.downsample_layers = nn.ModuleList() # stem and 3 intermediate downsampling conv layers
         stem = nn.Sequential(
@@ -201,9 +170,6 @@ class ConvNeXt(nn.Module):
             raise TypeError('pretrained must be a str or None')
 
     def forward_features(self, x):
-        if self.bayar:
-            x_bayar = self.bayar_conv(x)
-            x = torch.cat([x, x_bayar], dim=1)
         outs = []
         for i in range(4):
             x = self.downsample_layers[i](x)
