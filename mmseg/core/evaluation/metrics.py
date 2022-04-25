@@ -360,13 +360,11 @@ def total_area_to_metrics(total_area_intersect,
     allowed_image_metrics = ['imIoU', 'imDice', 'imFscore']
     if not set(metrics).issubset(set(allowed_mean_metrics) | set(allowed_image_metrics)):
         raise KeyError('metrics {} is not supported'.format(metrics))
-    pixel_wise = set(metrics).issubset(set(allowed_mean_metrics))
 
-    if not pixel_wise:
-        image_area_intersect = torch.stack(total_area_intersect)
-        image_area_union = torch.stack(total_area_union)
-        image_area_pred_label = torch.stack(total_area_pred_label)
-        image_area_label = torch.stack(total_area_label)
+    image_area_intersect = torch.stack(total_area_intersect)
+    image_area_union = torch.stack(total_area_union)
+    image_area_pred_label = torch.stack(total_area_pred_label)
+    image_area_label = torch.stack(total_area_label)
     total_area_intersect = sum(total_area_intersect)
     total_area_union = sum(total_area_union)
     total_area_pred_label = sum(total_area_pred_label)
@@ -397,18 +395,18 @@ def total_area_to_metrics(total_area_intersect,
             ret_metrics['Precision'] = precision
             ret_metrics['Recall'] = recall
         elif metric == 'imIoU':
-            iou = (image_area_intersect / image_area_union + (image_area_label == 0).long()).mean(0)
+            iou = (image_area_intersect / (image_area_union + 1) + (image_area_union == 0).long()).mean(0)
             acc = total_area_intersect / total_area_label
             ret_metrics['IoU'] = iou
             ret_metrics['Acc'] = acc
         elif metric == 'imDice':
             dice = (2 * image_area_intersect / (
-                image_area_pred_label + image_area_label) + (image_area_label == 0).long()).mean(0)
+                image_area_pred_label + image_area_label + 1) + (image_area_union == 0).long()).mean(0)
             acc = total_area_intersect / total_area_label
             ret_metrics['iDice'] = dice
             ret_metrics['Acc'] = acc
         elif metric == 'imFscore':
-            precision = (image_area_intersect / image_area_pred_label + (image_area_label == 0).long()).mean(0)
+            precision = (image_area_intersect / (image_area_pred_label + 1) + (image_area_union == 0).long()).mean(0)
             recall = (image_area_intersect / image_area_label + (image_area_label == 0).long()).mean(0)
             f_value = torch.tensor(
                 [f_score(x[0], x[1], beta) for x in zip(precision, recall)])
