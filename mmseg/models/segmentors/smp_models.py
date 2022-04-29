@@ -33,14 +33,40 @@ class SMPUnet(BaseSegmentor):
                  pretrained=None,
                  init_cfg=None):
         super(SMPUnet, self).__init__(init_cfg)
-        model = smp.Unet(backbone.get("type"), 
-                        encoder_weights = backbone.get("pretrained", "imagenet"),
-                        decoder_attention_type = decode_head.get("attention_type", None),
-                        in_channels = backbone.get("in_channels", 3),
-                        classes = decode_head.get("num_classes", 1))
-        self.backbone = model.encoder
-        self.decode_head = model.decoder
-        self.segmentation_head = model.segmentation_head
+        encoder_name = backbone.get("type")
+        in_channels = backbone.get("in_channels", 3)
+        encoder_weights = backbone.get("pretrained", "imagenet")
+        encoder_depth = backbone.get("depth", 5)
+        decoder_channels = decode_head.get("channels", (256, 128, 64, 32, 16))
+        decoder_use_batchnorm = decode_head.get("use_batchnorm", True)
+        decoder_attention_type = decode_head.get("attention_type", None)
+        classes = decode_head.get("num_classes", 1)
+        activation = decode_head.get("activation", None)
+
+        
+        self.backbone = smp.encoders.get_encoder(
+            encoder_name,
+            in_channels=in_channels,
+            depth=encoder_depth,
+            weights=encoder_weights,
+        )
+
+        self.decode_head = smp.unet.decoder.UnetDecoder(
+            encoder_channels=self.backbone.out_channels,
+            decoder_channels=decoder_channels[:encoder_depth],
+            n_blocks=encoder_depth,
+            use_batchnorm=decoder_use_batchnorm,
+            center=True if encoder_name.startswith("vgg") else False,
+            attention_type=decoder_attention_type,
+        )
+
+        self.segmentation_head = smp.base.SegmentationHead(
+            in_channels=decoder_channels[:encoder_depth][-1],
+            out_channels=classes,
+            activation=activation,
+            kernel_size=3,
+        )
+
 
         self.align_corners = decode_head.get("align_corners", 1)
         self.num_classes = decode_head.get("num_classes", 1)
@@ -60,8 +86,6 @@ class SMPUnet(BaseSegmentor):
 
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
-
-        assert self.with_decode_head
 
     @force_fp32(apply_to=('seg_logit', ))
     def losses(self, seg_logit, seg_label):
