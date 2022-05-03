@@ -7,9 +7,7 @@ import torch.nn.functional as F
 
 from ..builder import LOSSES
 
-def soft_dice_score(
-        output, target, smooth = 1.0, eps = 1e-7, dims=None
-):
+def soft_dice_score(output, target, smooth = 1.0, eps = 1e-7, dims=None):
     assert output.size() == target.size()
     if dims is not None:
         intersection = torch.sum(output * target, dim=dims)
@@ -20,6 +18,20 @@ def soft_dice_score(
     dice_score = (2.0 * intersection + smooth) / (cardinality + smooth).clamp_min(eps)
     return dice_score
 
+def soft_tversky_score(output, target, alpha, beta, smooth = 1.0, eps = 1e-7, dims=None):
+    assert output.size() == target.size()
+    if dims is not None:
+        intersection = torch.sum(output * target, dim=dims)  # TP
+        fp = torch.sum(output * (1. - target), dim=dims)
+        fn = torch.sum((1 - output) * target, dim=dims)
+    else:
+        intersection = torch.sum(output * target)  # TP
+        fp = torch.sum(output * (1. - target))
+        fn = torch.sum((1 - output) * target)
+
+    tversky_score = (intersection + smooth) / (intersection + alpha * fp + beta * fn + smooth).clamp_min(eps)
+    return tversky_score
+
 BINARY_MODE = "binary"
 MULTICLASS_MODE = "multiclass"
 MULTILABEL_MODE = "multilabel"
@@ -29,6 +41,8 @@ class SMPDiceLoss(nn.Module):
     def __init__(
         self,
         mode,
+        alpha = 0.5,
+        beta = 0.5,
         smooth = 1.0,
         ignore_index = 255,
         eps = 1e-7,
@@ -59,6 +73,8 @@ class SMPDiceLoss(nn.Module):
         super(SMPDiceLoss, self).__init__()
         self.mode = mode
 
+        self.alpha = alpha
+        self.beta = beta
         self.smooth = smooth
         self.eps = eps
         self.ignore_index = ignore_index
@@ -113,9 +129,11 @@ class SMPDiceLoss(nn.Module):
                 y_pred = y_pred * mask
                 y_true = y_true * mask
 
-        scores = soft_dice_score(
+        scores = soft_tversky_score(
             y_pred, 
             y_true.type_as(y_pred), 
+            alpha = self.alpha,
+            beta = self.beta,
             smooth = self.smooth, 
             eps = self.eps, 
             dims = dims)
