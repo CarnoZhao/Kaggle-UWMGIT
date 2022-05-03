@@ -100,65 +100,6 @@ class LoadImageFromFile(object):
         repr_str += f"imdecode_backend='{self.imdecode_backend}')"
         return repr_str
 
-@PIPELINES.register_module()
-class Load3ImageFromFile(LoadImageFromFile):
-    def __call__(self, results):
-        """Call functions to load image and get image meta information.
-
-        Args:
-            results (dict): Result dict from :obj:`mmseg.CustomDataset`.
-
-        Returns:
-            dict: The dict contains loaded image and meta information.
-        """
-
-        if self.file_client is None:
-            self.file_client = mmcv.FileClient(**self.file_client_args)
-
-        if results.get('img_prefix') is not None:
-            filename = osp.join(results['img_prefix'],
-                                results['img_info']['filename'])
-        else:
-            filename = results['img_info']['filename']
-        splits = os.path.basename(filename).split("_")
-        slice_num = int(splits[2])
-        imgs = []
-        for i in range(3):
-            filename_i = [_ for _ in splits]
-            filename_i[2] = f"{slice_num + 1 - i:04d}"
-            filename_i = os.path.join(os.path.dirname(filename), "_".join(filename_i))
-            if os.path.exists(filename_i):
-                img_bytes = self.file_client.get(filename_i)
-                img = mmcv.imfrombytes(
-                    img_bytes, flag=self.color_type, backend=self.imdecode_backend)
-            else:
-                img = None
-            imgs.append(img)
-        if imgs[0] is not None:
-            imgs[1][...,0] = imgs[0][...,0]
-        if imgs[-1] is not None:
-            imgs[1][...,-1] = imgs[-1][...,0]
-        img = imgs[1]
-        if img.dtype != np.uint8 and self.max_value != -1:
-            img = img.astype(np.float32) / self.max_value # * 255
-            # img = img.astype(np.uint8)
-        if self.to_float32:
-            img = img.astype(np.float32)
-
-        results['filename'] = filename
-        results['ori_filename'] = results['img_info']['filename']
-        results['img'] = img
-        results['img_shape'] = img.shape
-        results['ori_shape'] = img.shape
-        # Set initial values for default meta_keys
-        results['pad_shape'] = img.shape
-        results['scale_factor'] = 1.0
-        num_channels = 1 if len(img.shape) < 3 else img.shape[2]
-        results['img_norm_cfg'] = dict(
-            mean=np.zeros(num_channels, dtype=np.float32),
-            std=np.ones(num_channels, dtype=np.float32),
-            to_rgb=False)
-        return results
 
 
 @PIPELINES.register_module()
