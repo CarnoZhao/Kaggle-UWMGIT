@@ -267,7 +267,8 @@ class EncoderDecoder(BaseSegmentor):
             seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
             seg_pred = seg_pred.long()
         elif self.test_cfg.get("multi_label", False):
-            seg_pred = seg_logit.round().permute(0, 2, 3, 1)
+            thres = self.test_cfg.get("multi_label_thres", 0.5)
+            seg_pred = (seg_logit > thres).permute(0, 2, 3, 1)
             seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
@@ -301,7 +302,8 @@ class EncoderDecoder(BaseSegmentor):
             seg_pred = seg_logit[:,1] > self.test_cfg.get("binary_thres")
             seg_pred = seg_pred.long()
         elif self.test_cfg.get("multi_label", False):
-            seg_pred = seg_logit.round().permute(0, 2, 3, 1)
+            thres = self.test_cfg.get("multi_label_thres", 0.5)
+            seg_pred = (seg_logit > thres).permute(0, 2, 3, 1)
             seg_pred = seg_pred.long()
         else:
             seg_pred = seg_logit.argmax(dim=1)
