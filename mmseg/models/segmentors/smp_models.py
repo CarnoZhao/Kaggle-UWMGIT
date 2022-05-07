@@ -8,9 +8,63 @@ from mmseg.ops import resize
 from mmcv.runner import BaseModule, auto_fp16, force_fp32
 from ..losses import accuracy
 from .. import builder
-from ..builder import SEGMENTORS, build_loss
+from ..builder import SEGMENTORS, build_loss, build_backbone
 from .base import BaseSegmentor
 import segmentation_models_pytorch as smp
+
+class SwinWrapper(nn.Module):
+    def __init__(self, encoder_name, in_channels = 3, weights = None):
+        super(SwinWrapper, self).__init__()
+        configs = {
+            "swin_tiny": dict(
+                embed_dims=96,
+                depths=[2, 2, 6, 2],
+                num_heads=[3, 6, 12, 24],
+                window_size=7,
+                use_abs_pos_embed=False,
+                drop_path_rate=0.3,
+                patch_norm=True
+            ),
+            "swin_small": dict(
+                embed_dims=96,
+                depths=[2, 2, 18, 2],
+                num_heads=[3, 6, 12, 24],
+                window_size=7,
+                use_abs_pos_embed=False,
+                drop_path_rate=0.3,
+                patch_norm=True
+            ),
+            "swin_base": dict(
+                embed_dims=128,
+                depths=[2, 2, 18, 2],
+                num_heads=[4, 8, 16, 32],
+                window_size=7,
+                use_abs_pos_embed=False,
+                drop_path_rate=0.3,
+                patch_norm=True
+            ),
+        }
+        out_channels = {
+            "swin_tiny": [96, 192, 384, 768],
+            "swin_small": [96, 192, 384, 768],
+            "swin_base": [128, 256, 512, 1024]
+        }
+        config = configs[encoder_name]
+        config["type"] = "SwinTransformer"
+        config["in_channels"] = in_channels
+        config["pretrained"] = weights
+        if "384" in weights:
+            config["window_size"] = 12
+            config["pretrain_img_size"] = 384
+        else:
+            assert "224" in weights, Exception("need a weight path with valid pretrained image size")
+        self.model = build_backbone(config)
+        self.out_channels = [in_channels,] + out_channels[encoder_name]
+
+    def forward(self, x):
+        outs = [x]
+        outs.extend(self.model(x))
+        return outs
 
 
 @SEGMENTORS.register_module()
@@ -43,13 +97,20 @@ class SMPUnet(BaseSegmentor):
         classes = decode_head.get("num_classes", 1)
         activation = decode_head.get("activation", None)
 
-        
-        self.backbone = smp.encoders.get_encoder(
-            encoder_name,
-            in_channels=in_channels,
-            depth=encoder_depth,
-            weights=encoder_weights,
-        )
+        if "swin" in encoder_name:
+            self.backbone = SwinWrapper(
+                encoder_name,
+                in_channels=in_channels,
+                weights=encoder_weights,
+            )
+            encoder_depth = 4
+        else:
+            self.backbone = smp.encoders.get_encoder(
+                encoder_name,
+                in_channels=in_channels,
+                depth=encoder_depth,
+                weights=encoder_weights,
+            )
 
         self.decode_head = smp.unet.decoder.UnetDecoder(
             encoder_channels=self.backbone.out_channels,

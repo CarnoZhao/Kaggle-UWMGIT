@@ -537,6 +537,7 @@ class SwinTransformer(BaseModule):
                  frozen_stages=-1,
                  init_cfg=None):
         self.frozen_stages = frozen_stages
+        self.in_channels = in_channels
 
         if isinstance(pretrain_img_size, int):
             pretrain_img_size = to_2tuple(pretrain_img_size)
