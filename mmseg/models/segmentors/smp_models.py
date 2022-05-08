@@ -4,6 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from mmseg.core import add_prefix
+from mmseg.core.seg.builder import build_pixel_sampler
 from mmseg.ops import resize
 from mmcv.runner import BaseModule, auto_fp16, force_fp32
 from ..losses import accuracy
@@ -131,6 +132,10 @@ class SMPUnet(BaseSegmentor):
 
         self.align_corners = decode_head.get("align_corners", 1)
         self.num_classes = decode_head.get("num_classes", 1)
+        if decode_head.get("sampler", False):
+            self.sampler = build_pixel_sampler(decode_head["sampler"], context=self)
+        else:
+            self.sampler = None
         self.ignore_index = ignore_index
 
 
@@ -157,7 +162,7 @@ class SMPUnet(BaseSegmentor):
             size=seg_label.shape[2:],
             mode='bilinear',
             align_corners=self.align_corners)
-        if False: # self.sampler is not None:
+        if self.sampler is not None:
             seg_weight = self.sampler.sample(seg_logit, seg_label)
         else:
             seg_weight = None
