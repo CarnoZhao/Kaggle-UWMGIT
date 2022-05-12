@@ -37,7 +37,8 @@ class LoadImageFromFile(object):
                  max_value=None,
                  file_client_args=dict(backend='disk'),
                  imdecode_backend='cv2',
-                 force_3chan=False):
+                 force_3chan=False,
+                 back_to_uint8=False):
         self.to_float32 = to_float32
         self.color_type = color_type
         self.file_client_args = file_client_args.copy()
@@ -45,6 +46,7 @@ class LoadImageFromFile(object):
         self.imdecode_backend = imdecode_backend
         self.max_value = max_value
         self.force_3chan = force_3chan
+        self.back_to_uint8 = back_to_uint8
 
     def __call__(self, results):
         """Call functions to load image and get image meta information.
@@ -72,8 +74,14 @@ class LoadImageFromFile(object):
                 img = img.astype(np.float32)
             elif self.max_value == "max":
                 img = img.astype(np.float32) / (img.max() + 1e-7)
+            elif isinstance(self.max_value, str) and self.max_value.startswith("q"):
+                q = np.quantile(img, float(self.max_value[1:]))
+                img = np.clip(img, 0, q) / q
             else:
                 img = img.astype(np.float32) / self.max_value
+
+            if self.back_to_uint8:
+                img = (img * 255).astype(np.uint8)
 
         if self.force_3chan:
             img = np.stack([img for _ in range(3)], -1)
