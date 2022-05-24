@@ -8,9 +8,10 @@ from .shape_convert import nchw_to_nlc, nlc_to_nchw
 from .up_conv_block import UpConvBlock
 from .efficientnet_inverted_residual import EffInvertedResidual
 from .efficientnet_se_layer import EffSELayer
+from .transunet import TransUnetEncoderWrapper
 
 __all__ = [
     'ResLayer', 'SelfAttentionBlock', 'make_divisible', 'InvertedResidual',
     'UpConvBlock', 'InvertedResidualV3', 'SELayer', 'PatchEmbed',
-    'nchw_to_nlc', 'nlc_to_nchw', 'EffInvertedResidual', 'EffSELayer'
+    'nchw_to_nlc', 'nlc_to_nchw', 'EffInvertedResidual', 'EffSELayer', 'TransUnetEncoderWrapper'
 ]
