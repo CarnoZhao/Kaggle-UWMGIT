@@ -33,6 +33,7 @@ class TIMMBackbone(BaseModule):
         checkpoint_path='',
         in_channels=3,
         init_cfg=None,
+        out_indices=None,
         **kwargs,
     ):
         if timm is None:
@@ -48,6 +49,9 @@ class TIMMBackbone(BaseModule):
             checkpoint_path=checkpoint_path,
             **kwargs,
         )
+        if out_indices is None:
+            out_indices = list(range(len(self.timm_model.feature_info.info)))
+        self.out_indices = out_indices
 
         # Make unused parameters None
         self.timm_model.global_pool = None
@@ -60,4 +64,5 @@ class TIMMBackbone(BaseModule):
 
     def forward(self, x):
         features = self.timm_model(x)
+        features = [features[i] for i in self.out_indices]
         return features
