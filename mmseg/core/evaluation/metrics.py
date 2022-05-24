@@ -315,17 +315,22 @@ def pre_eval_to_metrics(pre_eval_results,
     # [(A_1, B_1, C_1, D_1), ...,  (A_n, B_n, C_n, D_n)] to
     # ([A_1, ..., A_n], ..., [D_1, ..., D_n])
     pre_eval_results = tuple(zip(*pre_eval_results))
-    assert len(pre_eval_results) == 4
+    assert len(pre_eval_results) == 5
 
     total_area_intersect = pre_eval_results[0]
     total_area_union = pre_eval_results[1]
     total_area_pred_label = pre_eval_results[2]
     total_area_label = pre_eval_results[3]
+    losses = pre_eval_results[4]
 
     ret_metrics = total_area_to_metrics(total_area_intersect, total_area_union,
                                         total_area_pred_label,
                                         total_area_label, metrics, nan_to_num,
                                         beta)
+    for loss_key in losses[0]:
+        if "loss" in loss_key:
+            loss = sum([_[loss_key].cpu().numpy() for _ in losses]) / len(losses)
+            ret_metrics[loss_key] = loss
 
     return ret_metrics
 

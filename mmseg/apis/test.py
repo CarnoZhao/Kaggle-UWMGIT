@@ -88,7 +88,7 @@ def single_gpu_test(model,
 
     for batch_indices, data in zip(loader_indices, data_loader):
         with torch.no_grad():
-            result = model(return_loss=False, **data)
+            result, loss = model(return_loss=False, **data)
 
         if efficient_test:
             result = [np2tmp(_, tmpdir='.efficient_test') for _ in result]
@@ -99,7 +99,7 @@ def single_gpu_test(model,
         if pre_eval:
             # TODO: adapt samples_per_gpu > 1.
             # only samples_per_gpu=1 valid now
-            result = dataset.pre_eval(result, indices=batch_indices)
+            result = dataset.pre_eval(result, loss = loss, indices=batch_indices)
 
         results.extend(result)
 
@@ -204,7 +204,7 @@ def multi_gpu_test(model,
 
     for batch_indices, data in zip(loader_indices, data_loader):
         with torch.no_grad():
-            result = model(return_loss=False, rescale=True, **data)
+            result, loss = model(return_loss=False, rescale=True, **data)
 
         if efficient_test:
             result = [np2tmp(_, tmpdir='.efficient_test') for _ in result]
@@ -215,7 +215,7 @@ def multi_gpu_test(model,
         if pre_eval:
             # TODO: adapt samples_per_gpu > 1.
             # only samples_per_gpu=1 valid now
-            result = dataset.pre_eval(result, indices=batch_indices)
+            result = dataset.pre_eval(result, loss=loss, indices=batch_indices)
 
         results.extend(result)
 

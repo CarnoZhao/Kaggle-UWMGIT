@@ -304,7 +304,8 @@ class CustomDataset(Dataset):
         """
 
         img_info = self.img_infos[idx]
-        results = dict(img_info=img_info)
+        ann_info = self.get_ann_info(idx)
+        results = dict(img_info=img_info, ann_info=ann_info)
         self.pre_pipeline(results)
         return self.pipeline(results)
 
@@ -363,7 +364,7 @@ class CustomDataset(Dataset):
             self.gt_seg_map_loader(results)
             yield results['gt_semantic_seg']
 
-    def pre_eval(self, preds, indices):
+    def pre_eval(self, preds, loss, indices):
         """Collect eval result from each iteration.
 
         Args:
@@ -400,6 +401,10 @@ class CustomDataset(Dataset):
                     intersect_and_union(pred, seg_map, len(self.CLASSES),
                                         self.ignore_index, self.label_map,
                                         self.reduce_zero_label))
+
+        for i in range(len(pre_eval_results)):
+            pre_eval_results[i] = list(pre_eval_results[i])
+            pre_eval_results[i].append(loss)
 
         return pre_eval_results
 
@@ -521,13 +526,16 @@ class CustomDataset(Dataset):
 
         # summary table
         ret_metrics_summary = OrderedDict({
-            ret_metric: np.round(np.nanmean(ret_metric_value) * 100, 2)
+            ret_metric: (np.round(np.nanmean(ret_metric_value) * 100, 2) if "loss" not in ret_metric else np.round(np.nanmean(ret_metric_value), 5))
             for ret_metric, ret_metric_value in ret_metrics.items()
         })
 
         # each class table
         ret_metrics.pop('aAcc', None)
         ret_metrics.pop('fwIoU', None)
+        for key in list(ret_metrics.keys()):
+            if "loss" in key:
+                ret_metrics.pop(key, None)
         ret_metrics_class = OrderedDict({
             ret_metric: np.round(ret_metric_value * 100, 2)
             for ret_metric, ret_metric_value in ret_metrics.items()
@@ -546,6 +554,8 @@ class CustomDataset(Dataset):
                 summary_table_data.add_column(key, [val])
             elif key == 'fwIoU':
                 summary_table_data.add_column(key, [val])
+            elif "loss" in key:
+                summary_table_data.add_column(key, [val])
             else:
                 summary_table_data.add_column('m' + key, [val])
 
@@ -558,8 +568,10 @@ class CustomDataset(Dataset):
         for key, value in ret_metrics_summary.items():
             if key == 'aAcc':
                 eval_results[key] = value / 100.0
-            if key == 'fwIoU':
+            elif key == 'fwIoU':
                 eval_results[key] = value / 100.0
+            elif "loss" in key:
+                eval_results[key] = value
             else:
                 eval_results['m' + key] = value / 100.0
 

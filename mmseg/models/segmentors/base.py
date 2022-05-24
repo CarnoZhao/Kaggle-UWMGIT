@@ -89,6 +89,8 @@ class BaseSegmentor(BaseModule, metaclass=ABCMeta):
             assert all(shape == pad_shapes[0] for shape in pad_shapes)
 
         if num_augs == 1:
+            if 'gt_semantic_seg' in kwargs:
+                kwargs['gt_semantic_seg'] = kwargs['gt_semantic_seg'][0]
             return self.simple_test(imgs[0], img_metas[0], **kwargs)
         else:
             return self.aug_test(imgs, img_metas, **kwargs)
