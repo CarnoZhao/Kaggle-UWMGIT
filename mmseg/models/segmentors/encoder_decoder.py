@@ -218,7 +218,7 @@ class EncoderDecoder(BaseSegmentor):
 
         return seg_logit
 
-    def inference(self, img, img_meta, rescale):
+    def inference(self, img, img_meta, rescale, **kwargs):
         """Inference with slide/whole style.
 
         Args:
@@ -241,6 +241,14 @@ class EncoderDecoder(BaseSegmentor):
             seg_logit = self.slide_inference(img, img_meta, rescale)
         else:
             seg_logit = self.whole_inference(img, img_meta, rescale)
+
+        losses = {}
+        if 'gt_semantic_seg' in kwargs:
+            gt_semantic_seg = kwargs['gt_semantic_seg']
+            loss_decode = self.decode_head.losses(seg_logit, gt_semantic_seg)
+
+            losses.update(add_prefix(loss_decode, 'decode'))
+
         if not self.test_cfg.get("multi_label", False):
             output = F.softmax(seg_logit, dim=1)
         else:
@@ -254,11 +262,11 @@ class EncoderDecoder(BaseSegmentor):
             elif flip_direction == 'vertical':
                 output = output.flip(dims=(2, ))
 
-        return output
+        return output, losses
 
-    def simple_test(self, img, img_meta, rescale=True):
+    def simple_test(self, img, img_meta, rescale=True, **kwargs):
         """Simple test with single image."""
-        seg_logit = self.inference(img, img_meta, rescale)
+        seg_logit, losses = self.inference(img, img_meta, rescale, **kwargs)
         if self.test_cfg.get("logits", False) and self.test_cfg.get("multi_label", False):
             seg_pred = seg_logit.permute(0, 2, 3, 1)# .argmax(dim=1)
         elif self.test_cfg.get("logits", False):
@@ -279,9 +287,10 @@ class EncoderDecoder(BaseSegmentor):
         seg_pred = seg_pred.cpu().numpy()
         # unravel batch dim
         seg_pred = list(seg_pred)
-        return seg_pred
+        
+        return seg_pred, losses
 
-    def aug_test(self, imgs, img_metas, rescale=True):
+    def aug_test(self, imgs, img_metas, rescale=True, **kwargs):
         """Test with augmentations.
 
         Only rescale=True is supported.
@@ -289,11 +298,15 @@ class EncoderDecoder(BaseSegmentor):
         # aug_test rescale all imgs back to ori_shape for now
         assert rescale
         # to save memory, we get augmented seg logit inplace
-        seg_logit = self.inference(imgs[0], img_metas[0], rescale)
+        seg_logit, losses = self.inference(imgs[0], img_metas[0], rescale, **kwargs)
         for i in range(1, len(imgs)):
-            cur_seg_logit = self.inference(imgs[i], img_metas[i], rescale)
+            cur_seg_logit, cur_loss = self.inference(imgs[i], img_metas[i], rescale)
             seg_logit += cur_seg_logit
+            for k in losses:
+                losses[k] += cur_loss[k]
         seg_logit /= len(imgs)
+        for k in losses:
+            losses[k] /= len(imgs)
         if self.test_cfg.get("logits", False) and self.test_cfg.get("multi_label", False):
             seg_pred = seg_logit.permute(0, 2, 3, 1)# .argmax(dim=1)
         elif self.test_cfg.get("logits", False):
@@ -310,4 +323,4 @@ class EncoderDecoder(BaseSegmentor):
         seg_pred = seg_pred.cpu().numpy()
         # unravel batch dim
         seg_pred = list(seg_pred)
-        return seg_pred
+        return seg_pred, losses
