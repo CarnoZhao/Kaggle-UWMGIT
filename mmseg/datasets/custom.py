@@ -92,21 +92,20 @@ class CustomDataset(Dataset):
                  reduce_zero_label=False,
                  keep_empty_prob=1.,
                  classes=None,
-                 use_mosaic=False,
-                 mosaic_center=(0.25, 0.75),
-                 mosaic_prob=0.5,
                  palette=None,
                  gt_seg_map_loader_cfg=None,
                  multi_label=False):
 
         self.multi_label = multi_label
-        self.use_mosaic = use_mosaic
+
+        self.use_mosaic = any([_['type'] == "Mosaic" for _ in pipeline])
         if self.use_mosaic:
-            self.mosaic_prob = mosaic_prob
-            self.mosaic_center = mosaic_center
+            assert sum([_['type'] == "Mosaic" for _ in pipeline]) == 1
             mosaic_at = [_['type'] == "Mosaic" for _ in pipeline].index(True)
+            mosaic = pipeline[mosaic_at]
+            self.mosaic_prob = mosaic.get("p", 0.5)
+            self.mosaic_center = mosaic.get("center", (0.25, 0.75))
             self.load_pipeline = Compose(pipeline[:mosaic_at])
-            print(self.load_pipeline)
             self.pipeline = Compose(pipeline[mosaic_at + 1:])
         else:
             self.pipeline = Compose(pipeline)
