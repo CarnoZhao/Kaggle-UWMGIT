@@ -90,6 +90,7 @@ class CustomDataset(Dataset):
                  test_mode=False,
                  ignore_index=255,
                  reduce_zero_label=False,
+                 keep_empty_prob=1.,
                  classes=None,
                  use_mosaic=False,
                  mosaic_center=(0.25, 0.75),
@@ -144,6 +145,8 @@ class CustomDataset(Dataset):
         self.img_infos = self.load_annotations(self.img_dir, self.img_suffix,
                                                self.ann_dir,
                                                self.seg_map_suffix, self.split)
+        self.keep_empty_prob = keep_empty_prob
+        self.get_resample_weight()
 
     def __len__(self):
         """Total number of samples of data."""
@@ -222,6 +225,8 @@ class CustomDataset(Dataset):
         if self.test_mode:
             return self.prepare_test_img(idx)
         else:
+            if self.resample is not None:
+                idx = self.resample(idx)
             return self.prepare_train_img(idx)
 
     def prepare_train_img(self, idx):
@@ -340,6 +345,25 @@ class CustomDataset(Dataset):
             result_files.append(result_file)
 
         return result_files
+
+    def get_resample_weight(self):
+        if self.multi_label and self.keep_empty_prob != 1:
+            probs = []
+            for idx in range(len(self)):
+                gt = self.get_gt_seg_map_by_idx(idx)
+                probs.append(self.keep_empty_prob if gt.sum() == 0 else 1)
+            probs = np.array(probs)
+            probs /= probs.sum()
+        else:
+            probs = None
+        self.probs = probs
+
+    def resample(self, idx):
+        if self.probs is None:
+            return idx
+        else:
+            return np.random.choice(len(self), p = self.probs)
+
 
     def get_gt_seg_map_by_idx(self, index):
         """Get one ground truth segmentation map for evaluation."""
