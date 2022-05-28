@@ -143,7 +143,8 @@ class FocalLoss(nn.Module):
                  reduction='mean',
                  class_weight=None,
                  loss_weight=1.0,
-                 loss_name='loss_focal'):
+                 loss_name='loss_focal',
+                 multi_label=False):
         """`Focal Loss <https://arxiv.org/abs/1708.02002>`_
         Args:
             use_sigmoid (bool, optional): Whether to the prediction is
@@ -195,6 +196,7 @@ class FocalLoss(nn.Module):
         self.class_weight = class_weight
         self.loss_weight = loss_weight
         self._loss_name = loss_name
+        self.multi_label = multi_label
 
     def forward(self,
                 pred,
@@ -269,7 +271,7 @@ class FocalLoss(nn.Module):
             reduction_override if reduction_override else self.reduction)
         if self.use_sigmoid:
             num_classes = pred.size(1)
-            if torch.cuda.is_available() and pred.is_cuda:
+            if False and torch.cuda.is_available() and pred.is_cuda:
                 if target.dim() == 1:
                     one_hot_target = F.one_hot(target, num_classes=num_classes)
                 else:
@@ -281,6 +283,8 @@ class FocalLoss(nn.Module):
                 one_hot_target = None
                 if target.dim() == 1:
                     target = F.one_hot(target, num_classes=num_classes)
+                elif self.multi_label:
+                    valid_mask = target!= ignore_index
                 else:
                     valid_mask = (target.argmax(dim=1) != ignore_index).view(
                         -1, 1)
