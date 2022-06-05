@@ -36,13 +36,14 @@ class LoadImageFromFile(object):
                  color_type='color',
                  max_value=None,
                  file_client_args=dict(backend='disk'),
+                 file_client=None,
                  imdecode_backend='cv2',
                  force_3chan=False,
                  back_to_uint8=False):
         self.to_float32 = to_float32
         self.color_type = color_type
         self.file_client_args = file_client_args.copy()
-        self.file_client = None
+        self.file_client = file_client
         self.imdecode_backend = imdecode_backend
         self.max_value = max_value
         self.force_3chan = force_3chan
@@ -66,9 +67,14 @@ class LoadImageFromFile(object):
                                 results['img_info']['filename'])
         else:
             filename = results['img_info']['filename']
-        img_bytes = self.file_client.get(filename)
-        img = mmcv.imfrombytes(
-            img_bytes, flag=self.color_type, backend=self.imdecode_backend)
+        if self.file_client == "npy":
+            img = np.load(filename)
+        else:
+            img_bytes = self.file_client.get(filename)
+            img = mmcv.imfrombytes(
+                img_bytes, flag=self.color_type, backend=self.imdecode_backend)
+            
+        
         if self.to_float32:
             if self.max_value is None:
                 img = img.astype(np.float32)
