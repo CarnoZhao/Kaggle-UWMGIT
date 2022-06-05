@@ -70,7 +70,6 @@ class SwinWrapper(nn.Module):
         outs.extend(self.model(x))
         return outs
 
-
 @SEGMENTORS.register_module()
 class SMPUnet(BaseSegmentor):
     """Encoder Decoder segmentors.
@@ -433,3 +432,31 @@ class SMPUnet(BaseSegmentor):
         # unravel batch dim
         seg_pred = list(seg_pred)
         return seg_pred, losses
+
+@SEGMENTORS.register_module()
+class SMPUnetPlusPlus(SMPUnet):
+    def __init__(self,
+                 backbone,
+                 decode_head,
+                 neck=None,
+                 auxiliary_head=None,
+                 train_cfg=None,
+                 test_cfg=None,
+                 ignore_index=255,
+                 pretrained=None,
+                 init_cfg=None):
+        super(SMPUnetPlusPlus, self).__init__(backbone, decode_head, neck, auxiliary_head, train_cfg, test_cfg, ignore_index, pretrained, init_cfg)
+        encoder_name = backbone.get("type")
+        encoder_depth = backbone.get("depth", 5)
+        decoder_channels = decode_head.get("channels", (256, 128, 64, 32, 16))
+        decoder_use_batchnorm = decode_head.get("use_batchnorm", True)
+        decoder_attention_type = decode_head.get("attention_type", None)
+
+        self.decode_head = smp.unetplusplus.decoder.UnetPlusPlusDecoder(
+            encoder_channels=self.backbone.out_channels,
+            decoder_channels=decoder_channels[:encoder_depth],
+            n_blocks=encoder_depth,
+            use_batchnorm=decoder_use_batchnorm,
+            center=True if encoder_name.startswith("vgg") else False,
+            attention_type=decoder_attention_type,
+        )

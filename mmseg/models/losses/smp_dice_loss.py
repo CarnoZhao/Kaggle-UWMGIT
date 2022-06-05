@@ -149,7 +149,7 @@ class SMPDiceLoss(nn.Module):
         loss *= mask.to(loss.dtype)
 
 
-        return loss.mean()
+        return loss.mean() * self.loss_weight
 
     @property
     def loss_name(self):
