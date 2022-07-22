@@ -17,6 +17,7 @@ data/*
 data/tract/*
 !data/tract/baseline.ipynb
 !data/tract/submission.ipynb
+!data/tract/final_solution
 
 # C extensions
 *.so

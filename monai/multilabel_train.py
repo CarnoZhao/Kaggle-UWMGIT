@@ -83,8 +83,6 @@ def main(cfg):
         stt = torch.load(cfg.weights, map_location = "cpu")
         if "model" in stt:
             stt = stt["model"]
-            if "covid19" in cfg.weights:
-                del stt["conv_final.2.conv.weight"], stt["conv_final.2.conv.bias"]
         if "state_dict" in stt:
             stt = stt["state_dict"]
             del stt["out.conv.conv.weight"], stt["out.conv.conv.bias"]
