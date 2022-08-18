@@ -249,5 +249,6 @@ checkpoint_config = dict(by_epoch=False, interval=1060, save_optimizer=False)
 evaluation = dict(
     by_epoch=False, interval=2120, metric=['imDice', 'mDice'], pre_eval=True)
 fp16 = dict()
-work_dir = './work_dirs/new/baseline_640_b6_bs18_case_fold1'
+# work_dir = './work_dirs/new/baseline_640_b6_bs18_case_fold1'
+work_dir = './work_dirs/tract/cls_4'
 gpu_ids = range(0, 2)

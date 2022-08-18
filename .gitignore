@@ -4,7 +4,7 @@ results
 *.zip
 work_imgs
 work_imgs2
-weights
+*weights
 *.pth
 nohup.out
 *.ipynb

@@ -54,7 +54,7 @@ df_train["size_y"] = np.repeat(size_y, 3)
 df_train["slice"] = np.repeat([int(os.path.basename(_)[:-4].split("_")[-5]) for _ in all_image_files], 3)
 df_train
 
-os.system("mkdir -p ./mmseg_train/2.5d_images ./mmseg_train/2.5d_labels")
+os.system("mkdir -p ./mmseg_train/images ./mmseg_train/labels")
 for day, group in tqdm(df_train.groupby("days")):
     patient = group.patient.iloc[0]
     imgs = []
@@ -83,11 +83,11 @@ for day, group in tqdm(df_train.groupby("days")):
         ]].transpose(1, 2, 0)
         msk = msks[i]
         new_image_name = f"{day}_{i}.png"
-        cv2.imwrite(f"./mmseg_train/2.5d_images/{new_image_name}", img)
-        cv2.imwrite(f"./mmseg_train/2.5d_labels/{new_image_name}", msk)
+        cv2.imwrite(f"./mmseg_train/images/{new_image_name}", img)
+        cv2.imwrite(f"./mmseg_train/labels/{new_image_name}", msk)
 
 os.system("mkdir -p ./mmseg_train/splits")
-all_image_files = glob.glob("./mmseg_train/2.5d_images/*")
+all_image_files = glob.glob("./mmseg_train/images/*")
 patients = [os.path.basename(_).split("_")[0] for _ in all_image_files]
 
 
@@ -134,3 +134,7 @@ for f in range(5):
     pd.DataFrame(x).to_csv(f"./mmseg_train/splits_noanno/holdout_{f}.txt", index = False, header = False)
     x = list(set(split.iloc[:,0].tolist()) - faults)
     pd.DataFrame(x).to_csv(f"./mmseg_train/splits_case/holdout_{f}.txt", index = False, header = False)
+
+    for d in ["", "_notail", "_noanno", "_case"]:
+        os.system(f"cat ./mmseg_train/splits{d}/holdout_{f}.txt > ./mmseg_train/splits{d}/fold_all.txt")
+        os.system(f"cat ./mmseg_train/splits{d}/fold_{f}.txt >> ./mmseg_train/splits{d}/fold_all.txt")
